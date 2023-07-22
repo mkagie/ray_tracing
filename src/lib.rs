@@ -40,7 +40,7 @@ impl Ray {
     /// Linearly blends white and blue depending on height of y
     pub fn get_color(&self, obj: &impl Hittable, depth: u32) -> Color {
         // If we have exceeded the ray bounce limit, no more light is gathered
-        if depth <= 0 {
+        if depth == 0 {
             return Color::zeros();
         }
 
@@ -129,10 +129,7 @@ impl Camera {
     fn random_in_unit_disk() -> Vec3 {
         let mut rng = rand::thread_rng();
         loop {
-            let mut random_vec: Vec<f64> = (0..2)
-                .into_iter()
-                .map(|_| rng.gen_range(-1.0..1.0))
-                .collect();
+            let mut random_vec: Vec<f64> = (0..2).map(|_| rng.gen_range(-1.0..1.0)).collect();
             random_vec.push(0.0);
             let p = Vec3::from_vec(random_vec);
             if p.norm().powi(2) < 1.0 {
