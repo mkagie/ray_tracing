@@ -14,9 +14,9 @@ fn write_color(color: &Color) {
 }
 
 #[derive(Debug)]
-struct Ray {
-    orig: Point,
-    dir: Vec3,
+pub struct Ray {
+    pub orig: Point,
+    pub dir: Vec3,
 }
 impl Ray {
     pub fn new(orig: &Point, dir: &Vec3) -> Self {
@@ -30,11 +30,33 @@ impl Ray {
         self.orig + t * self.dir
     }
 
-    pub fn get_color(&self) -> Color {
-        // Blends white and blue
+    /// Linearly blends white and blue depending on height of y
+    pub fn get_color(&self, sphere: &Sphere) -> Color {
+        if sphere.is_hit(&self) {
+            return Color::new(1.0, 0.0, 0.0);
+        }
         let unit_direction = self.dir.normalize();
         let t = 0.5 * (unit_direction[1] + 1.0);
         (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct Sphere {
+    pub center: Point,
+    pub radius: f64,
+}
+impl Sphere {
+    pub fn new(center: Point, radius: f64) -> Self {
+        Self { center, radius }
+    }
+
+    pub fn is_hit(&self, ray: &Ray) -> bool {
+        let oc = ray.orig - self.center;
+        let a = ray.dir.norm().powi(2);
+        let b = 2.0 * oc.dot(&ray.dir);
+        let c = oc.norm().powi(2) - self.radius.powi(2);
+        b.powi(2) - 4.0 * a * c > 0.0
     }
 }
 
@@ -56,9 +78,11 @@ fn main() {
     let lower_left_corner =
         origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
 
+    // Create Sphere
+    let sphere = Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5);
+
     // Render
     print!("P3\n{image_width} {image_height}\n255\n");
-
     let bar = ProgressBar::new((image_width * image_height) as u64);
     for j in (0..=image_height - 1).rev() {
         for i in 0..image_width {
@@ -66,7 +90,7 @@ fn main() {
             let v = j as f64 / (image_height - 1) as f64;
             let dir = lower_left_corner + u * horizontal + v * vertical - origin;
             let ray = Ray::new(&origin, &dir);
-            let color = ray.get_color();
+            let color = ray.get_color(&sphere);
             write_color(&color);
             bar.inc(1);
         }
