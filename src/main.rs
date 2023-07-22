@@ -37,7 +37,7 @@ impl Ray {
             normal,
             t,
             front_face,
-        }) = obj.try_hit(&self, 0.0, 1.0)
+        }) = obj.try_hit(&self, 0.0, f64::MAX)
         {
             return 0.5 * Color::new(normal[0] + 1.0, normal[1] + 1.0, normal[2] + 1.0);
         }
@@ -125,6 +125,33 @@ impl HitRecord {
     }
 }
 
+#[derive(Default)]
+pub struct HittableList(Vec<Box<dyn Hittable>>);
+impl HittableList {
+    pub fn add(&mut self, boxed_obj: Box<dyn Hittable>) {
+        self.0.push(boxed_obj)
+    }
+
+    pub fn clear(&mut self) {
+        self.0.clear()
+    }
+}
+impl Hittable for HittableList {
+    // TODO(mkagie) Refactor this more rusty
+    fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut closest_so_far = t_max;
+        let mut hr_final = None;
+
+        for obj in &self.0 {
+            if let Some(hr) = obj.try_hit(ray, t_min, closest_so_far) {
+                closest_so_far = hr.t;
+                hr_final = Some(hr)
+            }
+        }
+        hr_final
+    }
+}
+
 pub trait Hittable {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
@@ -147,8 +174,10 @@ fn main() {
     let lower_left_corner =
         origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
 
-    // Create Sphere
-    let sphere = Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5);
+    // Create World
+    let mut world = HittableList::default();
+    world.add(Box::new(Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0)));
 
     // Render
     print!("P3\n{image_width} {image_height}\n255\n");
@@ -159,7 +188,7 @@ fn main() {
             let v = j as f64 / (image_height - 1) as f64;
             let dir = lower_left_corner + u * horizontal + v * vertical - origin;
             let ray = Ray::new(&origin, &dir);
-            let color = ray.get_color(&sphere);
+            let color = ray.get_color(&world);
             write_color(&color);
             bar.inc(1);
         }
