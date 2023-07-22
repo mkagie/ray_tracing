@@ -2,7 +2,6 @@
 use indicatif::ProgressBar;
 use nalgebra::Vector3;
 use rand::Rng;
-use rayon::prelude::*;
 
 type Vec3 = Vector3<f64>;
 type Point = Vec3;
@@ -33,11 +32,11 @@ impl Ray {
     /// Linearly blends white and blue depending on height of y
     pub fn get_color(&self, obj: &impl Hittable) -> Color {
         if let Some(HitRecord {
-            p,
+            p: _,
             normal,
-            t,
-            front_face,
-        }) = obj.try_hit(&self, 0.0, f64::MAX)
+            t: _,
+            front_face: _,
+        }) = obj.try_hit(self, 0.0, f64::MAX)
         {
             return 0.5 * Color::new(normal[0] + 1.0, normal[1] + 1.0, normal[2] + 1.0);
         }
@@ -187,7 +186,7 @@ impl Default for Camera {
 impl Camera {
     pub fn get_ray(&self, u: f64, v: f64) -> Ray {
         Ray::new(
-            self.origin.clone(),
+            self.origin,
             self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
         )
     }
@@ -199,18 +198,6 @@ fn main() {
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
     let samples_per_pixel = 20;
-
-    // Setup Camera
-    let viewport_height = 2.0;
-    let viewport_width = ASPECT_RATIO * viewport_height;
-    let focal_length = 1.0;
-
-    // Scene
-    let origin = Point::new(0.0, 0.0, 0.0);
-    let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, viewport_height, 0.0);
-    let lower_left_corner =
-        origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
 
     // Create World
     let mut world = HittableList::default();
@@ -229,7 +216,7 @@ fn main() {
     for j in (0..=image_height - 1).rev() {
         for i in 0..image_width {
             let mut pixel_color = Color::zeros();
-            for s in 0..samples_per_pixel {
+            for _ in 0..samples_per_pixel {
                 let u = (i as f64 + rng.gen::<f64>()) / (image_width - 1) as f64;
                 let v = (j as f64 + rng.gen::<f64>()) / (image_height - 1) as f64;
                 let ray = cam.get_ray(u, v);
