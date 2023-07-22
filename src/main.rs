@@ -1,6 +1,7 @@
 //! Code to generate a ray tracer, working through the examples
 use std::sync::{Arc, RwLock};
 
+use image::RgbImage;
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::Rng;
 use ray_tracing::{prelude::*, utils};
@@ -145,12 +146,14 @@ fn main() {
     // Random generator
     let mut rng = rand::thread_rng();
 
+    // Create an output image
+    let mut out_image = RgbImage::new(image_width as u32, image_height as u32);
+
     // Create the threadpool
     let n_workers = 20; // Number of cores I have
     let pool = ThreadPool::new(n_workers);
 
     // Render
-    print!("P3\n{image_width} {image_height}\n255\n");
     let bar = ProgressBar::new((image_width * image_height) as u64);
     bar.set_style(
         ProgressStyle::with_template(
@@ -180,8 +183,14 @@ fn main() {
                 .unwrap();
 
             bar.inc(1);
-            utils::write_color(&pixel_color, samples_per_pixel);
+            out_image.put_pixel(
+                i as u32,
+                // Invert the height
+                (image_height - j) as u32,
+                utils::get_pixel(&pixel_color, samples_per_pixel),
+            );
         }
     }
-    bar.finish()
+    bar.finish();
+    out_image.save("./image.jpeg").unwrap();
 }

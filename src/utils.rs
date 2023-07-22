@@ -4,6 +4,7 @@ use nalgebra::Vector3;
 use rand::Rng;
 type Vec3 = Vector3<f64>;
 use super::Color;
+use image::Rgb;
 
 /// Compute a random vector inside the unit circle
 ///
@@ -42,9 +43,20 @@ pub fn write_color(color: &Color, samples_per_pixel: usize) {
     println!("{r} {g} {b}");
 }
 
+pub fn get_pixel(color: &Color, samples_per_pixel: usize) -> Rgb<u8> {
+    let scale = 1.0 / samples_per_pixel as f64;
+
+    // Divide the color by the number of samples and gamma-correct for gamma = 2.0
+    let r = scale_color((scale * color[0]).sqrt());
+    let g = scale_color((scale * color[1]).sqrt());
+    let b = scale_color((scale * color[2]).sqrt());
+
+    Rgb([r, g, b])
+}
+
 /// scale the color to between 0 and 255
-fn scale_color(val: f64) -> u64 {
-    (256.0 * val.min(0.999).max(0.0)) as u64
+fn scale_color(val: f64) -> u8 {
+    (256.0 * val.min(0.999).max(0.0)) as u8
 }
 
 /// Generate Random Vectors
