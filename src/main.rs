@@ -31,9 +31,15 @@ impl Ray {
     }
 
     /// Linearly blends white and blue depending on height of y
-    pub fn get_color(&self, sphere: &Sphere) -> Color {
-        if sphere.is_hit(&self) {
-            return Color::new(1.0, 0.0, 0.0);
+    pub fn get_color(&self, obj: &impl Hittable) -> Color {
+        if let Some(HitRecord {
+            p,
+            normal,
+            t,
+            front_face,
+        }) = obj.try_hit(&self, 0.0, 1.0)
+        {
+            return 0.5 * Color::new(normal[0] + 1.0, normal[1] + 1.0, normal[2] + 1.0);
         }
         let unit_direction = self.dir.normalize();
         let t = 0.5 * (unit_direction[1] + 1.0);
@@ -51,13 +57,76 @@ impl Sphere {
         Self { center, radius }
     }
 
-    pub fn is_hit(&self, ray: &Ray) -> bool {
+    pub fn hit(&self, ray: &Ray) -> f64 {
         let oc = ray.orig - self.center;
         let a = ray.dir.norm().powi(2);
-        let b = 2.0 * oc.dot(&ray.dir);
+        let half_b = oc.dot(&ray.dir);
         let c = oc.norm().powi(2) - self.radius.powi(2);
-        b.powi(2) - 4.0 * a * c > 0.0
+        let discriminant = half_b.powi(2) - a * c;
+        if discriminant < 0.0 {
+            -1.0
+        } else {
+            (-half_b - discriminant.sqrt()) / a
+        }
     }
+}
+impl Hittable for Sphere {
+    fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let oc = ray.orig - self.center;
+        let a = ray.dir.norm().powi(2);
+        let half_b = oc.dot(&ray.dir);
+        let c = oc.norm().powi(2) - self.radius.powi(2);
+        let discriminant = half_b.powi(2) - a * c;
+        if discriminant < 0.0 {
+            return None;
+        }
+
+        // Find the nearest root that lies in the acceptable range
+        let sqrtd = discriminant.sqrt();
+        let mut root = (-half_b - sqrtd) / a;
+        if root < t_min || t_max < root {
+            root = (-half_b + sqrtd) / a;
+            if root < t_min || t_max < root {
+                return None;
+            }
+        }
+        let p = ray.get(root);
+        let t = root;
+        let outward_normal = ((p - self.center) / self.radius).normalize();
+        Some(HitRecord::new(p, t, ray, &outward_normal))
+    }
+}
+
+/// Represents a hit
+#[derive(Debug)]
+pub struct HitRecord {
+    /// Point of intersection
+    pub p: Point,
+    /// Normali vector
+    pub normal: Vec3,
+    /// roots of intersection
+    pub t: f64,
+    /// Wither we are facing the normal
+    front_face: bool,
+}
+impl HitRecord {
+    pub fn new(p: Point, t: f64, ray: &Ray, outward_normal: &Vec3) -> Self {
+        let front_face = ray.dir.dot(outward_normal) < 0.0;
+        let mut normal = outward_normal.to_owned();
+        if !front_face {
+            normal = -normal;
+        }
+        Self {
+            p,
+            normal,
+            t,
+            front_face,
+        }
+    }
+}
+
+pub trait Hittable {
+    fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
 fn main() {
