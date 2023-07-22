@@ -385,14 +385,9 @@ pub mod utils {
     ///
     /// Randomly generate vectors. If the norm is < 1, it is inside the unit circle.
     pub fn random_in_unit_sphere() -> Vec3 {
-        let mut rng = rand::thread_rng();
         loop {
-            let p = Vec3::from_vec(
-                (0..3)
-                    .into_iter()
-                    .map(|_| rng.gen_range(-1.0..1.0))
-                    .collect(),
-            );
+            let p = gen_random(3, Some(-1.0), Some(1.0));
+
             if p.norm().powi(2) < 1.0 {
                 // We normalize the vector on the output to more exactly represent Lambertian
                 return p.normalize();
@@ -427,21 +422,79 @@ pub mod utils {
     fn scale_color(val: f64) -> u64 {
         (256.0 * val.min(0.999).max(0.0)) as u64
     }
+
+    /// Generate Random Vectors
+    pub fn gen_random(len: usize, min: Option<f64>, max: Option<f64>) -> Vec3 {
+        let mut rng = rand::thread_rng();
+        Vec3::from_vec(
+            (0..len)
+                .into_iter()
+                .map(|_| {
+                    if min.is_some() && max.is_some() {
+                        rng.gen_range(min.unwrap()..max.unwrap())
+                    } else {
+                        rng.gen()
+                    }
+                })
+                .collect(),
+        )
+    }
 }
 
-fn main() {
-    // Setup Image
-    const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    let image_width: usize = 400;
-    let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
-    let samples_per_pixel = 100;
-    let max_depth = 50;
+fn random_scene() -> HittableList {
+    let mut world = HittableList::default();
+    let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        ground_material,
+    )));
 
+    let mut rng = rand::thread_rng();
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat: f64 = rng.gen();
+            let center = Point::new(
+                a as f64 + 0.9 * rng.gen::<f64>(),
+                0.2,
+                b as f64 + 0.9 * rng.gen::<f64>(),
+            );
+
+            if (center - Point::new(4.0, 0.2, 0.0)).norm() > 0.9 {
+                if choose_mat < 0.8 {
+                    //difuse
+                    let albedo = utils::gen_random(3, None, None)
+                        .component_mul(&utils::gen_random(3, None, None));
+                    let sphere_material = Box::new(Lambertian::new(albedo));
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+                } else if choose_mat < 0.95 {
+                    // Metal
+                    let albedo = utils::gen_random(3, Some(0.5), Some(1.0));
+                    let fuzz = rng.gen_range(0.0..0.5);
+                    let sphere_material = Box::new(Metal::new(albedo, fuzz));
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+                } else {
+                    // Glass
+                    let sphere_material = Box::new(Dielectric::new(1.5));
+                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+                }
+            }
+        }
+    }
+    let mat0 = Box::new(Dielectric::new(1.5));
+    world.add(Box::new(Sphere::new(Point::new(0.0, 1.0, 0.0), 1.0, mat0)));
+    let mat1 = Box::new(Lambertian::new(Color::new(0.4, 0.2, 0.1)));
+    world.add(Box::new(Sphere::new(Point::new(-4.0, 1.0, 0.0), 1.0, mat1)));
+    let mat2 = Box::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
+    world.add(Box::new(Sphere::new(Point::new(4.0, 1.0, 0.0), 1.0, mat2)));
+
+    world
+}
+
+fn orig_scene() -> HittableList {
     // Create World
     let mut world = HittableList::default();
-
-    let r = (std::f64::consts::PI / 4.0).cos();
-
+    // let r = (std::f64::consts::PI / 4.0).cos();
     // Define materials
     let material_ground = Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
     // let material_center = Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
@@ -478,6 +531,7 @@ fn main() {
         0.5,
         material_right,
     )));
+    //
     // world.add(Box::new(Sphere::new(
     //     Point::new(-r, 0.0, -1.0),
     //     r,
@@ -488,6 +542,23 @@ fn main() {
     //     r,
     //     material_right,
     // )));
+    // let world = random_scene();
+    world
+}
+
+fn main() {
+    // Setup Image
+    const ASPECT_RATIO: f64 = 3.0 / 2.0;
+    // const ASPECT_RATIO: f64 = 16.0 / 9.0;
+    let image_width: usize = 400;
+    // let image_width: usize = 1200;
+    let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
+    let samples_per_pixel = 20;
+    let max_depth = 20;
+
+    // Create World
+    // let world = orig_scene();
+    let world = random_scene();
     let protected_world = Arc::new(RwLock::new(world));
 
     let look_from = Point::new(3.0, 3.0, 2.0);
@@ -495,6 +566,11 @@ fn main() {
     let v_up = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = (look_from - look_at).norm();
     let aperture = 2.0;
+    // let look_from = Point::new(13.0, 2.0, 3.0);
+    // let look_at = Point::new(0.0, 0.0, 0.0);
+    // let v_up = Vec3::new(0.0, 1.0, 0.0);
+    // let dist_to_focus = 10.0;
+    // let aperture = 0.1;
     let cam = Camera::new(
         look_from,
         look_at,
@@ -509,7 +585,7 @@ fn main() {
     let mut rng = rand::thread_rng();
 
     // Create the threadpool
-    let n_workers = 20;
+    let n_workers = 20; // Number of cores I have
     let pool = ThreadPool::new(n_workers);
 
     // Render
