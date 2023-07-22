@@ -1,8 +1,13 @@
 //! Implementation of materials
 
-use crate::{objects::HitRecord, utils, Color, Ray};
+use crate::{
+    objects::HitRecord,
+    utils::{self, SerdeVector},
+    Color, Material, Ray,
+};
 use dyn_clone::DynClone;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// Material
 pub trait Scatterable: DynClone {
@@ -18,6 +23,27 @@ pub struct ScatterResult {
     pub scattered: Ray,
 }
 
+/// Config for materials
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum MaterialConfig {
+    Lambertian(LambertianConfig),
+    Metal(MetalConfig),
+    Dielectric(DielectricConfig),
+}
+
+/// Generator from config
+pub struct Generator;
+impl Generator {
+    pub fn from_config(config: MaterialConfig) -> Material {
+        match config {
+            MaterialConfig::Lambertian(c) => Box::new(Lambertian::from_config(c)),
+            MaterialConfig::Metal(c) => Box::new(Metal::from_config(c)),
+            MaterialConfig::Dielectric(c) => Box::new(Dielectric::from_config(c)),
+        }
+    }
+}
+
 /// Lmabertian Scatterer
 #[derive(Debug, Clone)]
 pub struct Lambertian {
@@ -26,6 +52,12 @@ pub struct Lambertian {
 impl Lambertian {
     pub fn new(albedo: Color) -> Self {
         Self { albedo }
+    }
+
+    pub fn from_config(config: LambertianConfig) -> Self {
+        Self {
+            albedo: config.albedo.into(),
+        }
     }
 }
 impl Scatterable for Lambertian {
@@ -45,6 +77,12 @@ impl Scatterable for Lambertian {
     }
 }
 
+/// Lambertian Config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LambertianConfig {
+    pub albedo: SerdeVector,
+}
+
 /// Metal Scatterer
 #[derive(Debug, Clone)]
 pub struct Metal {
@@ -54,6 +92,13 @@ pub struct Metal {
 impl Metal {
     pub fn new(albedo: Color, fuzz: f64) -> Self {
         Self { albedo, fuzz }
+    }
+
+    pub fn from_config(config: MetalConfig) -> Self {
+        Self {
+            albedo: config.albedo.into(),
+            fuzz: config.fuzz,
+        }
     }
 }
 impl Scatterable for Metal {
@@ -75,6 +120,13 @@ impl Scatterable for Metal {
     }
 }
 
+/// Metal Config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetalConfig {
+    pub albedo: SerdeVector,
+    fuzz: f64,
+}
+
 /// A Dielectric is a refractive material, such as glass
 #[derive(Debug, Clone)]
 pub struct Dielectric {
@@ -83,6 +135,10 @@ pub struct Dielectric {
 impl Dielectric {
     pub fn new(ir: f64) -> Self {
         Self { ir }
+    }
+
+    pub fn from_config(config: DielectricConfig) -> Self {
+        Self { ir: config.ir }
     }
 
     fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
@@ -123,4 +179,10 @@ impl Scatterable for Dielectric {
             scattered,
         })
     }
+}
+
+/// Dielectric Config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DielectricConfig {
+    pub ir: f64,
 }

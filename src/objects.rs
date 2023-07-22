@@ -1,5 +1,10 @@
 //! Objects
-use crate::{Material, Point, Ray, Vec3};
+use crate::{
+    materials::{self, MaterialConfig},
+    utils::SerdeVector,
+    Material, Point, Ray, Vec3,
+};
+use serde::{Deserialize, Serialize};
 
 pub trait Hittable {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
@@ -14,6 +19,15 @@ impl HittableList {
 
     pub fn clear(&mut self) {
         self.0.clear()
+    }
+
+    pub fn from_config(config: HittableListConfig) -> Self {
+        let mut s = Self::default();
+        for obj_cfg in config.objects {
+            let obj = Sphere::from_config(obj_cfg);
+            s.add(Box::new(obj));
+        }
+        s
     }
 }
 impl Hittable for HittableList {
@@ -30,6 +44,13 @@ impl Hittable for HittableList {
         }
         hr_final
     }
+}
+
+// TODO(mkagie) extend out of spheres once we have more
+/// Hittable List Config
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HittableListConfig {
+    objects: Vec<SphereConfig>,
 }
 
 /// Represents a hit
@@ -75,6 +96,14 @@ impl Sphere {
             material,
         }
     }
+
+    pub fn from_config(config: SphereConfig) -> Self {
+        Self::new(
+            config.center.into(),
+            config.radius,
+            materials::Generator::from_config(config.material),
+        )
+    }
 }
 impl Hittable for Sphere {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
@@ -109,4 +138,12 @@ impl Hittable for Sphere {
             dyn_clone::clone_box(&*self.material),
         ))
     }
+}
+
+/// Sphere config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SphereConfig {
+    pub center: SerdeVector,
+    pub radius: f64,
+    pub material: MaterialConfig,
 }
