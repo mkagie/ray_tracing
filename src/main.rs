@@ -117,8 +117,8 @@ fn main() {
     // Setup Image
     const ASPECT_RATIO: f64 = 3.0 / 2.0;
     // const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    // let image_width: usize = 400;
-    let image_width: usize = 1200;
+    let image_width: usize = 400;
+    // let image_width: usize = 1200;
     let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
     let samples_per_pixel = 500;
     let max_depth = 50;
@@ -186,7 +186,7 @@ fn main() {
             out_image.put_pixel(
                 i as u32,
                 // Invert the height
-                (image_height - j) as u32,
+                (image_height - 1 - j) as u32,
                 utils::get_pixel(&pixel_color, samples_per_pixel),
             );
         }
