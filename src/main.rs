@@ -189,10 +189,42 @@ impl Default for Camera {
     }
 }
 impl Camera {
-    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+    // TODO(mkagie) use uom for angle
+    pub fn new(
+        look_from: Point,
+        look_at: Point,
+        v_up: Vec3,
+        vertical_fov_deg: f64,
+        aspect_ratio: f64,
+    ) -> Self {
+        // Establish the viewport
+        let theta = vertical_fov_deg.to_radians();
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h;
+        let viewport_width = aspect_ratio * viewport_height;
+
+        // Calculate the viewing vectors
+        let w = (look_from - look_at).normalize();
+        let u = (v_up.cross(&w)).normalize();
+        let v = w.cross(&u);
+
+        let origin = look_from;
+        let horizontal = viewport_width * u;
+        let vertical = viewport_height * v;
+        let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - w;
+
+        Self {
+            origin,
+            lower_left_corner,
+            horizontal,
+            vertical,
+        }
+    }
+
+    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
         Ray::new(
             self.origin,
-            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin,
         )
     }
 }
@@ -222,7 +254,7 @@ impl Lambertian {
     }
 }
 impl Scatterable for Lambertian {
-    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+    fn try_scatter(&self, _ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
         let mut scatter_direction = hit_record.normal + utils::random_in_unit_sphere();
 
         // Protect against if hit_record.normal and the random_in_unit_sphere as exact opposites
@@ -395,6 +427,8 @@ fn main() {
     // Create World
     let mut world = HittableList::default();
 
+    let r = (std::f64::consts::PI / 4.0).cos();
+
     // Define materials
     let material_ground = Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
     // let material_center = Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
@@ -402,6 +436,8 @@ fn main() {
     // let material_center = Box::new(Dielectric::new(1.5));
     // let material_left = Box::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3));
     let material_left = Box::new(Dielectric::new(1.5));
+    // let material_left = Box::new(Lambertian::new(Color::new(0.0, 0.0, 1.0)));
+    // let material_right = Box::new(Lambertian::new(Color::new(1.0, 0.0, 0.0)));
     let material_right = Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
 
     world.add(Box::new(Sphere::new(
@@ -429,10 +465,34 @@ fn main() {
         0.5,
         material_right,
     )));
+    // world.add(Box::new(Sphere::new(
+    //     Point::new(-r, 0.0, -1.0),
+    //     r,
+    //     material_left,
+    // )));
+    // world.add(Box::new(Sphere::new(
+    //     Point::new(r, 0.0, -1.0),
+    //     r,
+    //     material_right,
+    // )));
     let protected_world = Arc::new(RwLock::new(world));
 
     // Create the camera
-    let cam = Camera::default();
+    // let cam = Camera::default();
+    // let cam = Camera::new(
+    //     Point::new(-2.0, 2.0, 1.0),
+    //     Point::new(0.0, 0.0, -1.0),
+    //     Point::new(0.0, 1.0, 0.0),
+    //     90.0,
+    //     ASPECT_RATIO,
+    // );
+    let cam = Camera::new(
+        Point::new(-2.0, 2.0, 1.0),
+        Point::new(0.0, 0.0, -1.0),
+        Point::new(0.0, 1.0, 0.0),
+        20.0,
+        ASPECT_RATIO,
+    );
 
     // Random generator
     let mut rng = rand::thread_rng();
