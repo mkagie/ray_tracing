@@ -206,7 +206,7 @@ pub mod utils {
 
     /// Compute a random vector inside the unit circle
     ///
-    /// Randomly generate vectors. If the norm is < 1, it is inside the unit circle
+    /// Randomly generate vectors. If the norm is < 1, it is inside the unit circle.
     pub fn random_in_unit_sphere() -> Vec3 {
         let mut rng = rand::thread_rng();
         loop {
@@ -217,8 +217,21 @@ pub mod utils {
                     .collect(),
             );
             if p.norm().powi(2) < 1.0 {
-                return p;
+                // We normalize the vector on the output to more exactly represent Lambertian
+                return p.normalize();
             }
+        }
+    }
+
+    /// A more intuitive and easy-to-understand diffuse method
+    ///
+    /// A uniform scatter direction for all angles away from the hit point
+    pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 {
+        let in_unit_sphere = random_in_unit_sphere();
+        if in_unit_sphere.dot(normal) > 0.0 {
+            in_unit_sphere
+        } else {
+            -in_unit_sphere
         }
     }
 
