@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-fn random_scene() -> HittableList {
+fn _random_scene() -> HittableList {
     let mut world = HittableList::default();
     let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
     world.add(Box::new(Sphere::new(
@@ -60,41 +60,6 @@ fn random_scene() -> HittableList {
     world
 }
 
-fn _orig_scene() -> HittableList {
-    let mut world = HittableList::default();
-    let material_ground = Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let material_center = Box::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Box::new(Dielectric::new(1.5));
-    let material_right = Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
-
-    world.add(Box::new(Sphere::new(
-        Point::new(0.0, -100.5, -1.0),
-        100.0,
-        material_ground,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(0.0, 0.0, -1.0),
-        0.5,
-        material_center,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(-1.0, 0.0, -1.0),
-        0.5,
-        material_left.clone(),
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(-1.0, 0.0, -1.0),
-        -0.4,
-        material_left,
-    )));
-    world.add(Box::new(Sphere::new(
-        Point::new(1.0, 0.0, -1.0),
-        0.5,
-        material_right,
-    )));
-    world
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -108,6 +73,7 @@ struct Config {
     #[serde(default = "Config::default_max_depth")]
     max_depth: u32,
     camera: CameraConfig,
+    objects: HittableListConfig,
 }
 impl Config {
     fn default_image_width() -> usize {
@@ -146,7 +112,8 @@ fn main() {
         (config.image_width as f64 / config.camera.aspect_ratio).round() as usize;
 
     // Create World
-    let world = random_scene();
+    // let world = random_scene();
+    let world = HittableList::from_config(config.objects);
     let protected_world = Arc::new(RwLock::new(world));
 
     let cam = Camera::new(

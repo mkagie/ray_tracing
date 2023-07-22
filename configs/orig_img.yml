@@ -1,11 +1,11 @@
 image_width: 640
-samples_per_pixel: 100
+samples_per_pixel: 50
 max_depth: 20
 camera:
   look_from:
-    x: 13.0
-    y: 2.0
-    z: 3.0
+    x: 0.0
+    y: 0.0
+    z: 10.0
   look_at:
     x: 0.0
     y: 0.0
@@ -42,6 +42,7 @@ objects:
         x: 0.1
         y: 0.2
         z: 0.5
+  # This and the next one together creates a glass factor
   - center:
       x: -1.0
       y: 0.0
@@ -69,4 +70,4 @@ objects:
         x: 0.8
         y: 0.6
         z: 0.2
-      fuzz: 0.0
+      fuzz: 0.2
