@@ -1,6 +1,7 @@
 //! Code to generate a ray tracer, working through the examples
 use std::sync::{Arc, RwLock};
 
+use dyn_clone::DynClone;
 use indicatif::ProgressBar;
 use nalgebra::Vector3;
 use rand::Rng;
@@ -10,6 +11,7 @@ use threadpool::ThreadPool;
 type Vec3 = Vector3<f64>;
 type Point = Vec3;
 type Color = Vec3;
+type Material = Box<dyn Scatterable + Send + Sync>;
 
 #[derive(Debug)]
 pub struct Ray {
@@ -33,17 +35,13 @@ impl Ray {
         }
 
         // Put a minimum of 0.001 to reduce shadow acne
-        if let Some(HitRecord {
-            p,
-            normal,
-            t: _,
-            front_face: _,
-        }) = obj.try_hit(self, 0.001, f64::MAX)
-        {
-            // Redirect randomly because of material
-            let target = p + normal + utils::random_in_unit_sphere();
-            let new_ray = Ray::new(p, target - p);
-            return 0.5 * new_ray.get_color(obj, depth - 1);
+        if let Some(hr) = obj.try_hit(self, 0.001, f64::MAX) {
+            if let Some(sr) = hr.material.try_scatter(self, &hr) {
+                return sr
+                    .attenuation
+                    .component_mul(&sr.scattered.get_color(obj, depth - 1));
+            }
+            return Color::zeros();
         }
         let unit_direction = self.dir.normalize();
         let t = 0.5 * (unit_direction[1] + 1.0);
@@ -51,26 +49,17 @@ impl Ray {
     }
 }
 
-#[derive(Debug)]
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
+    pub material: Material,
 }
 impl Sphere {
-    pub fn new(center: Point, radius: f64) -> Self {
-        Self { center, radius }
-    }
-
-    pub fn hit(&self, ray: &Ray) -> f64 {
-        let oc = ray.orig - self.center;
-        let a = ray.dir.norm().powi(2);
-        let half_b = oc.dot(&ray.dir);
-        let c = oc.norm().powi(2) - self.radius.powi(2);
-        let discriminant = half_b.powi(2) - a * c;
-        if discriminant < 0.0 {
-            -1.0
-        } else {
-            (-half_b - discriminant.sqrt()) / a
+    pub fn new(center: Point, radius: f64, material: Material) -> Self {
+        Self {
+            center,
+            radius,
+            material,
         }
     }
 }
@@ -97,12 +86,19 @@ impl Hittable for Sphere {
         let p = ray.get(root);
         let t = root;
         let outward_normal = ((p - self.center) / self.radius).normalize();
-        Some(HitRecord::new(p, t, ray, &outward_normal))
+        // NOTE -- we use dyn_clone here because self.material is a trait object -- you cannot
+        // clone a trait object
+        Some(HitRecord::new(
+            p,
+            t,
+            ray,
+            &outward_normal,
+            dyn_clone::clone_box(&*self.material),
+        ))
     }
 }
 
 /// Represents a hit
-#[derive(Debug)]
 pub struct HitRecord {
     /// Point of intersection
     pub p: Point,
@@ -112,9 +108,12 @@ pub struct HitRecord {
     pub t: f64,
     /// Wither we are facing the normal
     front_face: bool,
+    // TODO(mkagie) I'm not sure I like having the material in a HitRecord
+    /// Material
+    pub material: Material,
 }
 impl HitRecord {
-    pub fn new(p: Point, t: f64, ray: &Ray, outward_normal: &Vec3) -> Self {
+    pub fn new(p: Point, t: f64, ray: &Ray, outward_normal: &Vec3, material: Material) -> Self {
         let front_face = ray.dir.dot(outward_normal) < 0.0;
         let mut normal = outward_normal.to_owned();
         if !front_face {
@@ -125,6 +124,7 @@ impl HitRecord {
             normal,
             t,
             front_face,
+            material,
         }
     }
 }
@@ -197,6 +197,81 @@ impl Camera {
     }
 }
 
+/// Scatter Result
+#[derive(Debug)]
+pub struct ScatterResult {
+    /// Attenuation Color
+    attenuation: Color,
+    /// Resulting Scattered Ray
+    scattered: Ray,
+}
+
+/// Material
+pub trait Scatterable: DynClone {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult>;
+}
+
+/// Lmabertian Scatterer
+#[derive(Debug, Clone)]
+pub struct Lambertian {
+    albedo: Color,
+}
+impl Lambertian {
+    pub fn new(albedo: Color) -> Self {
+        Self { albedo }
+    }
+}
+impl Scatterable for Lambertian {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+        let mut scatter_direction = hit_record.normal + utils::random_in_unit_sphere();
+
+        // Protect against if hit_record.normal and the random_in_unit_sphere as exact opposites
+        if scatter_direction.norm() < 1e-8 {
+            scatter_direction = hit_record.normal;
+        }
+        let scattered = Ray::new(hit_record.p, scatter_direction);
+        let attenuation = self.albedo;
+        Some(ScatterResult {
+            attenuation,
+            scattered,
+        })
+    }
+}
+
+/// Metal Scatterer
+#[derive(Debug, Clone)]
+pub struct Metal {
+    albedo: Color,
+    fuzz: f64,
+}
+impl Metal {
+    pub fn new(albedo: Color, fuzz: f64) -> Self {
+        Self { albedo, fuzz }
+    }
+
+    fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
+        v - 2.0 * v.dot(n) * n
+    }
+}
+impl Scatterable for Metal {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+        let reflected = Self::reflect(&ray_in.dir.normalize(), &hit_record.normal);
+        let scattered = Ray::new(
+            hit_record.p,
+            reflected + self.fuzz * utils::random_in_unit_sphere(),
+        );
+        let attenuation = self.albedo;
+        if scattered.dir.dot(&hit_record.normal) > 0.0 {
+            Some(ScatterResult {
+                attenuation,
+                scattered,
+            })
+        } else {
+            None
+        }
+    }
+}
+
 /// Module for random utils
 pub mod utils {
     use nalgebra::Vector3;
@@ -262,8 +337,33 @@ fn main() {
 
     // Create World
     let mut world = HittableList::default();
-    world.add(Box::new(Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5)));
-    world.add(Box::new(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0)));
+
+    // Define materials
+    let material_ground = Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let material_center = Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
+    let material_left = Box::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3));
+    let material_right = Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
+
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -100.5, -1.0),
+        100.0,
+        material_ground,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 0.0, -1.0),
+        0.5,
+        material_center,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(-1.0, 0.0, -1.0),
+        0.5,
+        material_left,
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(1.0, 0.0, -1.0),
+        0.5,
+        material_right,
+    )));
     let protected_world = Arc::new(RwLock::new(world));
 
     // Create the camera
