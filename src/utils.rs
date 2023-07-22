@@ -64,7 +64,6 @@ pub fn gen_random(len: usize, min: Option<f64>, max: Option<f64>) -> Vec3 {
     let mut rng = rand::thread_rng();
     Vec3::from_vec(
         (0..len)
-            .into_iter()
             .map(|_| {
                 if min.is_some() && max.is_some() {
                     rng.gen_range(min.unwrap()..max.unwrap())

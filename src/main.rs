@@ -58,7 +58,7 @@ fn random_scene() -> HittableList {
     world
 }
 
-fn orig_scene() -> HittableList {
+fn _orig_scene() -> HittableList {
     // Create World
     let mut world = HittableList::default();
     // let r = (std::f64::consts::PI / 4.0).cos();
