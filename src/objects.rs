@@ -42,7 +42,6 @@ pub struct HitRecord {
     pub t: f64,
     /// Wither we are facing the normal
     pub front_face: bool,
-    // TODO(mkagie) I'm not sure I like having the material in a HitRecord
     /// Material
     pub material: Material,
 }

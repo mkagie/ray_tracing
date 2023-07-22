@@ -1,6 +1,6 @@
 //! Implementation of materials
 
-use crate::{objects::HitRecord, utils, Color, Ray, Vec3};
+use crate::{objects::HitRecord, utils, Color, Ray};
 use dyn_clone::DynClone;
 use rand::Rng;
 
@@ -55,14 +55,10 @@ impl Metal {
     pub fn new(albedo: Color, fuzz: f64) -> Self {
         Self { albedo, fuzz }
     }
-
-    fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
-        v - 2.0 * v.dot(n) * n
-    }
 }
 impl Scatterable for Metal {
     fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
-        let reflected = Self::reflect(&ray_in.dir.normalize(), &hit_record.normal);
+        let reflected = utils::reflect(&ray_in.dir.normalize(), &hit_record.normal);
         let scattered = Ray::new(
             hit_record.p,
             reflected + self.fuzz * utils::random_in_unit_sphere(),
@@ -87,13 +83,6 @@ pub struct Dielectric {
 impl Dielectric {
     pub fn new(ir: f64) -> Self {
         Self { ir }
-    }
-
-    fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
-        let cos_theta = -uv.dot(n).min(1.0);
-        let r_out_perp = etai_over_etat * (uv + cos_theta * n);
-        let r_out_parallel = -(1.0 - r_out_perp.norm().powi(2)).abs().sqrt() * n;
-        r_out_perp + r_out_parallel
     }
 
     fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
@@ -123,9 +112,9 @@ impl Scatterable for Dielectric {
         {
             // TODO(mkagie) Remove reflect and refract from Metal and Dielectric, since they are no
             // longer tied to them
-            Metal::reflect(&unit_direction, &hit_record.normal)
+            utils::reflect(&unit_direction, &hit_record.normal)
         } else {
-            Self::refract(&unit_direction, &hit_record.normal, refraction_ratio)
+            utils::refract(&unit_direction, &hit_record.normal, refraction_ratio)
         };
 
         let scattered = Ray::new(hit_record.p, direction);

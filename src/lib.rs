@@ -23,6 +23,7 @@ pub mod prelude {
     pub use crate::{Camera, Color, Material, Point, Vec3};
 }
 
+/// The ray in ray tracing
 #[derive(Debug)]
 pub struct Ray {
     pub orig: Point,
