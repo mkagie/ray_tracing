@@ -160,6 +160,7 @@ pub trait Hittable {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 
+// TODO(mkagie) Convert the camera from look at and look from to look_from and quaternion
 /// Camera and related tasks
 #[derive(Debug)]
 pub struct Camera {
@@ -167,26 +168,10 @@ pub struct Camera {
     lower_left_corner: Point,
     horizontal: Vec3,
     vertical: Vec3,
-}
-impl Default for Camera {
-    fn default() -> Self {
-        let aspect_ratio = 16.0 / 9.0;
-        let viewport_height = 2.0;
-        let viewport_width = aspect_ratio * viewport_height;
-        let focal_length = 1.0;
-
-        let origin = Point::zeros();
-        let horizontal = Vec3::new(viewport_width, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, viewport_height, 0.0);
-        let lower_left_corner =
-            origin - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, focal_length);
-        Self {
-            origin,
-            lower_left_corner,
-            horizontal,
-            vertical,
-        }
-    }
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
+    lens_radius: f64,
 }
 impl Camera {
     // TODO(mkagie) use uom for angle
@@ -196,6 +181,8 @@ impl Camera {
         v_up: Vec3,
         vertical_fov_deg: f64,
         aspect_ratio: f64,
+        aperture: f64,
+        focus_dist: f64,
     ) -> Self {
         // Establish the viewport
         let theta = vertical_fov_deg.to_radians();
@@ -209,23 +196,49 @@ impl Camera {
         let v = w.cross(&u);
 
         let origin = look_from;
-        let horizontal = viewport_width * u;
-        let vertical = viewport_height * v;
-        let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - w;
+        let horizontal = focus_dist * viewport_width * u;
+        let vertical = focus_dist * viewport_height * v;
+        let lower_left_corner = origin - horizontal / 2.0 - vertical / 2.0 - focus_dist * w;
+
+        let lens_radius = aperture / 2.0;
 
         Self {
             origin,
             lower_left_corner,
             horizontal,
             vertical,
+            u,
+            v,
+            w,
+            lens_radius,
         }
     }
 
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+        let rd = self.lens_radius * Self::random_in_unit_disk();
+        let offset = self.u * rd[0] + self.v * rd[1];
+
         Ray::new(
-            self.origin,
-            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin,
+            self.origin + offset,
+            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
         )
+    }
+
+    /// Generate a random vector inside a unit disk
+    /// This simulates defocus blur
+    fn random_in_unit_disk() -> Vec3 {
+        let mut rng = rand::thread_rng();
+        loop {
+            let mut random_vec: Vec<f64> = (0..2)
+                .into_iter()
+                .map(|_| rng.gen_range(-1.0..1.0))
+                .collect();
+            random_vec.push(0.0);
+            let p = Vec3::from_vec(random_vec);
+            if p.norm().powi(2) < 1.0 {
+                return p;
+            }
+        }
     }
 }
 
@@ -421,8 +434,8 @@ fn main() {
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
-    let samples_per_pixel = 20;
-    let max_depth = 20;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
 
     // Create World
     let mut world = HittableList::default();
@@ -477,21 +490,19 @@ fn main() {
     // )));
     let protected_world = Arc::new(RwLock::new(world));
 
-    // Create the camera
-    // let cam = Camera::default();
-    // let cam = Camera::new(
-    //     Point::new(-2.0, 2.0, 1.0),
-    //     Point::new(0.0, 0.0, -1.0),
-    //     Point::new(0.0, 1.0, 0.0),
-    //     90.0,
-    //     ASPECT_RATIO,
-    // );
+    let look_from = Point::new(3.0, 3.0, 2.0);
+    let look_at = Point::new(0.0, 0.0, -1.0);
+    let v_up = Vec3::new(0.0, 1.0, 0.0);
+    let dist_to_focus = (look_from - look_at).norm();
+    let aperture = 2.0;
     let cam = Camera::new(
-        Point::new(-2.0, 2.0, 1.0),
-        Point::new(0.0, 0.0, -1.0),
-        Point::new(0.0, 1.0, 0.0),
+        look_from,
+        look_at,
+        v_up,
         20.0,
         ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
     );
 
     // Random generator
