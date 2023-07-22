@@ -5,6 +5,7 @@ use rand::Rng;
 type Vec3 = Vector3<f64>;
 use super::Color;
 use image::Rgb;
+use serde::{Deserialize, Serialize};
 
 /// Compute a random vector inside the unit circle
 ///
@@ -84,4 +85,26 @@ pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
 
 pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
     v - 2.0 * v.dot(n) * n
+}
+
+/// Serde-complient vector
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SerdeVector {
+    x: f64,
+    y: f64,
+    z: f64,
+}
+impl From<SerdeVector> for Vec3 {
+    fn from(value: SerdeVector) -> Self {
+        Self::new(value.x, value.y, value.z)
+    }
+}
+impl From<Vec3> for SerdeVector {
+    fn from(value: Vec3) -> Self {
+        Self {
+            x: value[0],
+            y: value[1],
+            z: value[2],
+        }
+    }
 }

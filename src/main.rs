@@ -1,10 +1,12 @@
 //! Code to generate a ray tracer, working through the examples
 use std::sync::{Arc, RwLock};
 
+use clap::Parser;
 use image::RgbImage;
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::Rng;
 use ray_tracing::{prelude::*, utils};
+use serde::{Deserialize, Serialize};
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
@@ -59,18 +61,10 @@ fn random_scene() -> HittableList {
 }
 
 fn _orig_scene() -> HittableList {
-    // Create World
     let mut world = HittableList::default();
-    // let r = (std::f64::consts::PI / 4.0).cos();
-    // Define materials
     let material_ground = Box::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    // let material_center = Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.3)));
     let material_center = Box::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    // let material_center = Box::new(Dielectric::new(1.5));
-    // let material_left = Box::new(Metal::new(Color::new(0.8, 0.8, 0.8), 0.3));
     let material_left = Box::new(Dielectric::new(1.5));
-    // let material_left = Box::new(Lambertian::new(Color::new(0.0, 0.0, 1.0)));
-    // let material_right = Box::new(Lambertian::new(Color::new(1.0, 0.0, 0.0)));
     let material_right = Box::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
 
     world.add(Box::new(Sphere::new(
@@ -98,87 +92,108 @@ fn _orig_scene() -> HittableList {
         0.5,
         material_right,
     )));
-    //
-    // world.add(Box::new(Sphere::new(
-    //     Point::new(-r, 0.0, -1.0),
-    //     r,
-    //     material_left,
-    // )));
-    // world.add(Box::new(Sphere::new(
-    //     Point::new(r, 0.0, -1.0),
-    //     r,
-    //     material_right,
-    // )));
-    // let world = random_scene();
     world
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct Config {
+    /// Aspect ratio (width / height)
+    /// Image width (in pixels)
+    #[serde(default = "Config::default_image_width")]
+    image_width: usize,
+    /// Samples per pixel (number of rays sent per pixel)
+    #[serde(default = "Config::default_samples_per_pixel")]
+    samples_per_pixel: usize,
+    /// Max number of bounces for a ray
+    #[serde(default = "Config::default_max_depth")]
+    max_depth: u32,
+    camera: CameraConfig,
+}
+impl Config {
+    fn default_image_width() -> usize {
+        400
+    }
+
+    fn default_samples_per_pixel() -> usize {
+        500
+    }
+
+    fn default_max_depth() -> u32 {
+        50
+    }
+}
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    config: String,
+
+    #[arg(short, long, default_value_t = String::from("./image.jpeg"))]
+    output: String,
+}
+
 fn main() {
-    // Setup Image
-    const ASPECT_RATIO: f64 = 3.0 / 2.0;
-    // const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    let image_width: usize = 400;
-    // let image_width: usize = 1200;
-    let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
-    let samples_per_pixel = 500;
-    let max_depth = 50;
+    let args = Args::parse();
+
+    // Read in
+    let config: Config = {
+        let f = std::fs::File::open(args.config).expect("Could not open config file.");
+        serde_yaml::from_reader(f).expect("Could not read values.")
+    };
+
+    let image_height: usize =
+        (config.image_width as f64 / config.camera.aspect_ratio).round() as usize;
 
     // Create World
-    // let world = orig_scene();
     let world = random_scene();
     let protected_world = Arc::new(RwLock::new(world));
 
-    let look_from = Point::new(13.0, 2.0, 3.0);
-    let look_at = Point::new(0.0, 0.0, 0.0);
-    let v_up = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = 10.0;
-    let aperture = 0.1;
     let cam = Camera::new(
-        look_from,
-        look_at,
-        v_up,
-        20.0,
-        ASPECT_RATIO,
-        aperture,
-        dist_to_focus,
+        config.camera.look_from.into(),
+        config.camera.look_at.into(),
+        config.camera.v_up.into(),
+        config.camera.vertical_fov_deg,
+        config.camera.aspect_ratio,
+        config.camera.aperture,
+        config.camera.focus_distance,
     );
 
     // Random generator
     let mut rng = rand::thread_rng();
 
     // Create an output image
-    let mut out_image = RgbImage::new(image_width as u32, image_height as u32);
+    let mut out_image = RgbImage::new(config.image_width as u32, image_height as u32);
 
     // Create the threadpool
     let n_workers = 20; // Number of cores I have
     let pool = ThreadPool::new(n_workers);
 
     // Render
-    let bar = ProgressBar::new((image_width * image_height) as u64);
+    let bar = ProgressBar::new((config.image_width * image_height) as u64);
     bar.set_style(
         ProgressStyle::with_template(
             "[{elapsed_precise} --- {eta_precise} --- {pos}/{len}] {wide_bar}",
-            // "[{elapsed_precise} {eta}] {bar:40.cyan/blue} {pos}/{len} {msg}",
         )
         .unwrap(),
     );
     for j in (0..=image_height - 1).rev() {
-        for i in 0..image_width {
+        for i in 0..config.image_width {
             let (worker_tx, worker_rx) = channel();
-            for _ in 0..samples_per_pixel {
+            for _ in 0..config.samples_per_pixel {
                 let tx = worker_tx.clone();
-                let u = (i as f64 + rng.gen::<f64>()) / (image_width - 1) as f64;
+                let u = (i as f64 + rng.gen::<f64>()) / (config.image_width - 1) as f64;
                 let v = (j as f64 + rng.gen::<f64>()) / (image_height - 1) as f64;
                 let ray = cam.get_ray(u, v);
                 let protected_world = Arc::clone(&protected_world);
                 pool.execute(move || {
-                    tx.send(ray.get_color(&*protected_world.read().unwrap(), max_depth))
+                    tx.send(ray.get_color(&*protected_world.read().unwrap(), config.max_depth))
                         .unwrap();
                 });
             }
             let pixel_color = worker_rx
                 .iter()
-                .take(samples_per_pixel)
+                .take(config.samples_per_pixel)
                 .reduce(|a, b| a + b)
                 .unwrap();
 
@@ -187,10 +202,10 @@ fn main() {
                 i as u32,
                 // Invert the height
                 (image_height - 1 - j) as u32,
-                utils::get_pixel(&pixel_color, samples_per_pixel),
+                utils::get_pixel(&pixel_color, config.samples_per_pixel),
             );
         }
     }
     bar.finish();
-    out_image.save("./image.jpeg").unwrap();
+    out_image.save(args.output).unwrap();
 }
