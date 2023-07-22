@@ -11,14 +11,6 @@ type Vec3 = Vector3<f64>;
 type Point = Vec3;
 type Color = Vec3;
 
-fn write_color(color: &Color, samples_per_pixel: usize) {
-    let scale = 1.0 / samples_per_pixel as f64;
-    let r = (256.0 * (color[0] * scale).min(0.999).max(0.0)) as u64;
-    let g = (256.0 * (color[1] * scale).min(0.999).max(0.0)) as u64;
-    let b = (256.0 * (color[2] * scale).min(0.999).max(0.0)) as u64;
-    println!("{r} {g} {b}");
-}
-
 #[derive(Debug)]
 pub struct Ray {
     pub orig: Point,
@@ -40,12 +32,13 @@ impl Ray {
             return Color::zeros();
         }
 
+        // Put a minimum of 0.001 to reduce shadow acne
         if let Some(HitRecord {
             p,
             normal,
             t: _,
             front_face: _,
-        }) = obj.try_hit(self, 0.0, f64::MAX)
+        }) = obj.try_hit(self, 0.001, f64::MAX)
         {
             // Redirect randomly because of material
             let target = p + normal + utils::random_in_unit_sphere();
@@ -209,6 +202,7 @@ pub mod utils {
     use nalgebra::Vector3;
     use rand::Rng;
     type Vec3 = Vector3<f64>;
+    use super::Color;
 
     /// Compute a random vector inside the unit circle
     ///
@@ -227,6 +221,22 @@ pub mod utils {
             }
         }
     }
+
+    pub fn write_color(color: &Color, samples_per_pixel: usize) {
+        let scale = 1.0 / samples_per_pixel as f64;
+
+        // Divide the color by the number of samples and gamma-correct for gamma = 2.0
+        let r = scale_color((scale * color[0]).sqrt());
+        let g = scale_color((scale * color[1]).sqrt());
+        let b = scale_color((scale * color[2]).sqrt());
+
+        println!("{r} {g} {b}");
+    }
+
+    /// scale the color to between 0 and 255
+    fn scale_color(val: f64) -> u64 {
+        (256.0 * val.min(0.999).max(0.0)) as u64
+    }
 }
 
 fn main() {
@@ -235,7 +245,7 @@ fn main() {
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
     let samples_per_pixel = 20;
-    let max_depth = 50;
+    let max_depth = 20;
 
     // Create World
     let mut world = HittableList::default();
@@ -277,7 +287,7 @@ fn main() {
                 .unwrap();
 
             bar.inc(1);
-            write_color(&pixel_color, samples_per_pixel);
+            utils::write_color(&pixel_color, samples_per_pixel);
         }
     }
     bar.finish()
