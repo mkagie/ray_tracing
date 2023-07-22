@@ -1,7 +1,11 @@
 //! Code to generate a ray tracer, working through the examples
+use std::sync::{Arc, RwLock};
+
 use indicatif::ProgressBar;
 use nalgebra::Vector3;
 use rand::Rng;
+use std::sync::mpsc::channel;
+use threadpool::ThreadPool;
 
 type Vec3 = Vector3<f64>;
 type Point = Vec3;
@@ -30,15 +34,23 @@ impl Ray {
     }
 
     /// Linearly blends white and blue depending on height of y
-    pub fn get_color(&self, obj: &impl Hittable) -> Color {
+    pub fn get_color(&self, obj: &impl Hittable, depth: u32) -> Color {
+        // If we have exceeded the ray bounce limit, no more light is gathered
+        if depth <= 0 {
+            return Color::zeros();
+        }
+
         if let Some(HitRecord {
-            p: _,
+            p,
             normal,
             t: _,
             front_face: _,
         }) = obj.try_hit(self, 0.0, f64::MAX)
         {
-            return 0.5 * Color::new(normal[0] + 1.0, normal[1] + 1.0, normal[2] + 1.0);
+            // Redirect randomly because of material
+            let target = p + normal + utils::random_in_unit_sphere();
+            let new_ray = Ray::new(p, target - p);
+            return 0.5 * new_ray.get_color(obj, depth - 1);
         }
         let unit_direction = self.dir.normalize();
         let t = 0.5 * (unit_direction[1] + 1.0);
@@ -125,9 +137,9 @@ impl HitRecord {
 }
 
 #[derive(Default)]
-pub struct HittableList(Vec<Box<dyn Hittable>>);
+pub struct HittableList(Vec<Box<dyn Hittable + Send + Sync>>);
 impl HittableList {
-    pub fn add(&mut self, boxed_obj: Box<dyn Hittable>) {
+    pub fn add(&mut self, boxed_obj: Box<dyn Hittable + Send + Sync>) {
         self.0.push(boxed_obj)
     }
 
@@ -192,37 +204,79 @@ impl Camera {
     }
 }
 
+/// Module for random utils
+pub mod utils {
+    use nalgebra::Vector3;
+    use rand::Rng;
+    type Vec3 = Vector3<f64>;
+
+    /// Compute a random vector inside the unit circle
+    ///
+    /// Randomly generate vectors. If the norm is < 1, it is inside the unit circle
+    pub fn random_in_unit_sphere() -> Vec3 {
+        let mut rng = rand::thread_rng();
+        loop {
+            let p = Vec3::from_vec(
+                (0..3)
+                    .into_iter()
+                    .map(|_| rng.gen_range(-1.0..1.0))
+                    .collect(),
+            );
+            if p.norm().powi(2) < 1.0 {
+                return p;
+            }
+        }
+    }
+}
+
 fn main() {
     // Setup Image
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
     let image_width: usize = 400;
     let image_height: usize = (image_width as f64 / ASPECT_RATIO).round() as usize;
     let samples_per_pixel = 20;
+    let max_depth = 50;
 
     // Create World
     let mut world = HittableList::default();
     world.add(Box::new(Sphere::new(Point::new(0.0, 0.0, -1.0), 0.5)));
     world.add(Box::new(Sphere::new(Point::new(0.0, -100.5, -1.0), 100.0)));
+    let protected_world = Arc::new(RwLock::new(world));
 
     // Create the camera
     let cam = Camera::default();
 
-    // Random sampler
+    // Random generator
     let mut rng = rand::thread_rng();
+
+    // Create the threadpool
+    let n_workers = 20;
+    let pool = ThreadPool::new(n_workers);
 
     // Render
     print!("P3\n{image_width} {image_height}\n255\n");
-    let bar = ProgressBar::new((image_width * image_height * samples_per_pixel) as u64);
+    let bar = ProgressBar::new((image_width * image_height) as u64);
     for j in (0..=image_height - 1).rev() {
         for i in 0..image_width {
-            let mut pixel_color = Color::zeros();
+            let (worker_tx, worker_rx) = channel();
             for _ in 0..samples_per_pixel {
+                let tx = worker_tx.clone();
                 let u = (i as f64 + rng.gen::<f64>()) / (image_width - 1) as f64;
                 let v = (j as f64 + rng.gen::<f64>()) / (image_height - 1) as f64;
                 let ray = cam.get_ray(u, v);
-                pixel_color += ray.get_color(&world);
-                bar.inc(1);
+                let protected_world = Arc::clone(&protected_world);
+                pool.execute(move || {
+                    tx.send(ray.get_color(&*protected_world.read().unwrap(), max_depth))
+                        .unwrap();
+                });
             }
+            let pixel_color = worker_rx
+                .iter()
+                .take(samples_per_pixel)
+                .reduce(|a, b| a + b)
+                .unwrap();
+
+            bar.inc(1);
             write_color(&pixel_color, samples_per_pixel);
         }
     }
