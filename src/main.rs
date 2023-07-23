@@ -200,13 +200,24 @@ fn cornell_box() -> HittableList {
         RectangleType::Xz,
     )));
     world.add(Box::new(Rectangle::new(
-        white,
+        white.clone(),
         0.0,
         555.0,
         0.0,
         555.0,
         555.0,
         RectangleType::Xy,
+    )));
+
+    world.add(Box::new(BoxObj::new(
+        Point::new(130.0, 0.0, 65.0),
+        Point::new(295.0, 165.0, 230.0),
+        white.clone(),
+    )));
+    world.add(Box::new(BoxObj::new(
+        Point::new(265.0, 0.0, 295.0),
+        Point::new(430.0, 330.0, 460.0),
+        white,
     )));
     world
 }

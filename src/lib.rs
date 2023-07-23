@@ -27,7 +27,7 @@ pub mod prelude {
     pub use crate::cameras::{Camera, CameraConfig};
     pub use crate::materials::{Dielectric, DiffuseLight, Lambertian, Metal};
     pub use crate::objects::{
-        HittableList, HittableListConfig, MovingSphere, Rectangle, RectangleType, Sphere,
+        BoxObj, HittableList, HittableListConfig, MovingSphere, Rectangle, RectangleType, Sphere,
     };
     pub use crate::texture::{Checker, Noise};
     pub use crate::{Color, Material, Point, Vec3};

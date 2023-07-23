@@ -393,3 +393,87 @@ impl Hittable for Rectangle {
         }
     }
 }
+
+/// Axis-aligned box made of 6 rectangles
+pub struct BoxObj {
+    box_min: Point,
+    box_max: Point,
+    sides: HittableList,
+}
+impl BoxObj {
+    pub fn new(box_min: Point, box_max: Point, material: Material) -> Self {
+        let mut sides = HittableList::default();
+
+        sides.add(Box::new(Rectangle::new(
+            dyn_clone::clone_box(&*material),
+            box_min[0],
+            box_max[0],
+            box_min[1],
+            box_max[1],
+            box_max[2],
+            RectangleType::Xy,
+        )));
+        sides.add(Box::new(Rectangle::new(
+            dyn_clone::clone_box(&*material),
+            box_min[0],
+            box_max[0],
+            box_min[1],
+            box_max[1],
+            box_min[2],
+            RectangleType::Xy,
+        )));
+
+        sides.add(Box::new(Rectangle::new(
+            dyn_clone::clone_box(&*material),
+            box_min[0],
+            box_max[0],
+            box_min[2],
+            box_max[2],
+            box_max[1],
+            RectangleType::Xz,
+        )));
+        sides.add(Box::new(Rectangle::new(
+            dyn_clone::clone_box(&*material),
+            box_min[0],
+            box_max[0],
+            box_min[2],
+            box_max[2],
+            box_min[1],
+            RectangleType::Xz,
+        )));
+
+        sides.add(Box::new(Rectangle::new(
+            dyn_clone::clone_box(&*material),
+            box_min[1],
+            box_max[1],
+            box_min[2],
+            box_max[2],
+            box_max[0],
+            RectangleType::Yz,
+        )));
+        sides.add(Box::new(Rectangle::new(
+            material,
+            box_min[1],
+            box_max[1],
+            box_min[2],
+            box_max[2],
+            box_min[0],
+            RectangleType::Yz,
+        )));
+
+        Self {
+            box_min,
+            box_max,
+            sides,
+        }
+    }
+}
+impl Hittable for BoxObj {
+    fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        self.sides.try_hit(ray, t_min, t_max)
+    }
+
+    fn try_bounding_box(&self, _time0: f64, _time1: f64) -> Option<Aabb> {
+        Some(Aabb::new(self.box_min, self.box_max))
+    }
+}
