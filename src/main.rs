@@ -133,6 +133,8 @@ fn main() {
         Scene::Canned => random_scene(),
         Scene::List(c) => HittableList::from_config(c),
     };
+    // BvhNode for the win!
+    let world = BvhNode::new(world, 0.0, 1.0);
     let protected_world = Arc::new(RwLock::new(world));
 
     let cam = Camera::new(
