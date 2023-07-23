@@ -19,4 +19,4 @@ camera:
   aperture: 0.1
   focus_distance: 10.0
 scene:
-  type: TwoSpheres
+  type: TwoPerlinSpheres

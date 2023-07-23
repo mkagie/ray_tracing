@@ -99,6 +99,24 @@ fn two_spheres() -> HittableList {
     world
 }
 
+fn two_perlin_spheres() -> HittableList {
+    let mut world = HittableList::default();
+
+    let pertext = Box::new(Noise::new(4.0));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Box::new(Lambertian::from_texture(pertext.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 2.0, 0.0),
+        2.0,
+        Box::new(Lambertian::from_texture(pertext)),
+    )));
+
+    world
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -134,6 +152,7 @@ impl Config {
 pub enum Scene {
     Random,
     TwoSpheres,
+    TwoPerlinSpheres,
     List(HittableListConfig),
 }
 
@@ -164,6 +183,7 @@ fn main() {
     let world = match config.scene {
         Scene::Random => random_scene(),
         Scene::TwoSpheres => two_spheres(),
+        Scene::TwoPerlinSpheres => two_perlin_spheres(),
         Scene::List(c) => HittableList::from_config(c),
     };
     // BvhNode for the win!
