@@ -147,3 +147,73 @@ pub struct SphereConfig {
     pub radius: f64,
     pub material: MaterialConfig,
 }
+
+// TODO(mkagie) Merge this with sphere
+/// Moving Sphere
+pub struct MovingSphere {
+    initial_center: Point,
+    final_center: Point,
+    initial_time: f64,
+    final_time: f64,
+    radius: f64,
+    material: Material,
+}
+impl MovingSphere {
+    pub fn new(
+        initial_center: Point,
+        final_center: Point,
+        initial_time: f64,
+        final_time: f64,
+        radius: f64,
+        material: Material,
+    ) -> Self {
+        Self {
+            initial_center,
+            final_center,
+            initial_time,
+            final_time,
+            radius,
+            material,
+        }
+    }
+
+    pub fn center(&self, time: f64) -> Point {
+        self.initial_center
+            + ((time - self.initial_time) / (self.final_time - self.initial_time))
+                * (self.final_center - self.initial_center)
+    }
+}
+impl Hittable for MovingSphere {
+    fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let oc = ray.orig - self.center(ray.time);
+        let a = ray.dir.norm().powi(2);
+        let half_b = oc.dot(&ray.dir);
+        let c = oc.norm().powi(2) - self.radius.powi(2);
+        let discriminant = half_b.powi(2) - a * c;
+        if discriminant < 0.0 {
+            return None;
+        }
+
+        // Find the nearest root that lies in the acceptable range
+        let sqrtd = discriminant.sqrt();
+        let mut root = (-half_b - sqrtd) / a;
+        if root < t_min || t_max < root {
+            root = (-half_b + sqrtd) / a;
+            if root < t_min || t_max < root {
+                return None;
+            }
+        }
+        let p = ray.get(root);
+        let t = root;
+        let outward_normal = ((p - self.center(ray.time)) / self.radius).normalize();
+        // NOTE -- we use dyn_clone here because self.material is a trait object -- you cannot
+        // clone a trait object
+        Some(HitRecord::new(
+            p,
+            t,
+            ray,
+            &outward_normal,
+            dyn_clone::clone_box(&*self.material),
+        ))
+    }
+}

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-fn _random_scene() -> HittableList {
+fn random_scene() -> HittableList {
     let mut world = HittableList::default();
     let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
     world.add(Box::new(Sphere::new(
@@ -35,7 +35,15 @@ fn _random_scene() -> HittableList {
                     let albedo = utils::gen_random(3, None, None)
                         .component_mul(&utils::gen_random(3, None, None));
                     let sphere_material = Box::new(Lambertian::new(albedo));
-                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+                    let center2 = center + Vec3::new(0.0, rng.gen_range(0.0..0.5), 0.0);
+                    world.add(Box::new(MovingSphere::new(
+                        center,
+                        center2,
+                        0.0,
+                        1.0,
+                        0.2,
+                        sphere_material,
+                    )));
                 } else if choose_mat < 0.95 {
                     // Metal
                     let albedo = utils::gen_random(3, Some(0.5), Some(1.0));
@@ -73,7 +81,7 @@ struct Config {
     #[serde(default = "Config::default_max_depth")]
     max_depth: u32,
     camera: CameraConfig,
-    objects: HittableListConfig,
+    scene: Scene,
 }
 impl Config {
     fn default_image_width() -> usize {
@@ -87,6 +95,14 @@ impl Config {
     fn default_max_depth() -> u32 {
         50
     }
+}
+
+/// Scene enum for canned or config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Scene {
+    Canned,
+    List(HittableListConfig),
 }
 
 #[derive(Parser, Debug)]
@@ -113,7 +129,10 @@ fn main() {
 
     // Create World
     // let world = random_scene();
-    let world = HittableList::from_config(config.objects);
+    let world = match config.scene {
+        Scene::Canned => random_scene(),
+        Scene::List(c) => HittableList::from_config(c),
+    };
     let protected_world = Arc::new(RwLock::new(world));
 
     let cam = Camera::new(
@@ -124,6 +143,9 @@ fn main() {
         config.camera.aspect_ratio,
         config.camera.aperture,
         config.camera.focus_distance,
+        // TODO(mkagie) Add this to the config
+        0.0,
+        1.0,
     );
 
     // Random generator

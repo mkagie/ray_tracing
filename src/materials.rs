@@ -61,14 +61,14 @@ impl Lambertian {
     }
 }
 impl Scatterable for Lambertian {
-    fn try_scatter(&self, _ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
         let mut scatter_direction = hit_record.normal + utils::random_in_unit_sphere();
 
         // Protect against if hit_record.normal and the random_in_unit_sphere as exact opposites
         if scatter_direction.norm() < 1e-8 {
             scatter_direction = hit_record.normal;
         }
-        let scattered = Ray::new(hit_record.p, scatter_direction);
+        let scattered = Ray::new(hit_record.p, scatter_direction, ray_in.time);
         let attenuation = self.albedo;
         Some(ScatterResult {
             attenuation,
@@ -107,6 +107,7 @@ impl Scatterable for Metal {
         let scattered = Ray::new(
             hit_record.p,
             reflected + self.fuzz * utils::random_in_unit_sphere(),
+            ray_in.time,
         );
         let attenuation = self.albedo;
         if scattered.dir.dot(&hit_record.normal) > 0.0 {
@@ -173,7 +174,7 @@ impl Scatterable for Dielectric {
             utils::refract(&unit_direction, &hit_record.normal, refraction_ratio)
         };
 
-        let scattered = Ray::new(hit_record.p, direction);
+        let scattered = Ray::new(hit_record.p, direction, ray_in.time);
         Some(ScatterResult {
             attenuation,
             scattered,

@@ -21,7 +21,7 @@ pub type Material = Box<dyn Scatterable + Send + Sync>;
 pub mod prelude {
     pub use crate::cameras::{Camera, CameraConfig};
     pub use crate::materials::{Dielectric, Lambertian, Metal};
-    pub use crate::objects::{HittableList, HittableListConfig, Sphere};
+    pub use crate::objects::{HittableList, HittableListConfig, MovingSphere, Sphere};
     pub use crate::{Color, Material, Point, Vec3};
 }
 
@@ -30,10 +30,11 @@ pub mod prelude {
 pub struct Ray {
     pub orig: Point,
     pub dir: Vec3,
+    pub time: f64,
 }
 impl Ray {
-    pub fn new(orig: Point, dir: Vec3) -> Self {
-        Self { orig, dir }
+    pub fn new(orig: Point, dir: Vec3, time: f64) -> Self {
+        Self { orig, dir, time }
     }
 
     pub fn get(&self, t: f64) -> Point {
