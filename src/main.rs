@@ -117,6 +117,29 @@ fn two_perlin_spheres() -> HittableList {
     world
 }
 
+fn simple_light() -> HittableList {
+    let mut world = HittableList::default();
+
+    let pertext = Box::new(Noise::new(4.0));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Box::new(Lambertian::from_texture(pertext.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 2.0, 0.0),
+        2.0,
+        Box::new(Lambertian::from_texture(pertext)),
+    )));
+
+    let difflight = Box::new(DiffuseLight::from_color(Color::new(4.0, 4.0, 4.0)));
+    world.add(Box::new(XyRectangle::new(
+        difflight, 3.0, 5.0, 1.0, 3.0, -2.0,
+    )));
+
+    world
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -153,6 +176,7 @@ pub enum Scene {
     Random,
     TwoSpheres,
     TwoPerlinSpheres,
+    SimpleLight,
     List(HittableListConfig),
 }
 
@@ -184,12 +208,14 @@ fn main() {
         Scene::Random => random_scene(),
         Scene::TwoSpheres => two_spheres(),
         Scene::TwoPerlinSpheres => two_perlin_spheres(),
+        Scene::SimpleLight => simple_light(),
         Scene::List(c) => HittableList::from_config(c),
     };
     // BvhNode for the win!
     let world = BvhNode::new(world, 0.0, 1.0);
     let protected_world = Arc::new(RwLock::new(world));
-    let background_color = Color::new(0.70, 0.8, 1.0);
+    // let background_color = Color::new(0.70, 0.8, 1.0);
+    let background_color = Color::new(0.0, 0.0, 0.0);
 
     let cam = Camera::new(
         config.camera.look_from.into(),

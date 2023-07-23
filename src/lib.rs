@@ -25,8 +25,8 @@ pub type Material = Box<dyn Scatterable + Send + Sync>;
 pub mod prelude {
     pub use crate::aabb::BvhNode;
     pub use crate::cameras::{Camera, CameraConfig};
-    pub use crate::materials::{Dielectric, Lambertian, Metal};
-    pub use crate::objects::{HittableList, HittableListConfig, MovingSphere, Sphere};
+    pub use crate::materials::{Dielectric, DiffuseLight, Lambertian, Metal};
+    pub use crate::objects::{HittableList, HittableListConfig, MovingSphere, Sphere, XyRectangle};
     pub use crate::texture::{Checker, Noise};
     pub use crate::{Color, Material, Point, Vec3};
 }

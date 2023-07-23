@@ -216,6 +216,12 @@ impl DiffuseLight {
     pub fn new(emit: Texture) -> Self {
         Self { emit }
     }
+
+    pub fn from_color(color: Color) -> Self {
+        Self {
+            emit: Box::new(SolidColor::new(color)),
+        }
+    }
 }
 impl Scatterable for DiffuseLight {
     fn try_scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<ScatterResult> {
