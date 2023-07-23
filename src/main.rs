@@ -78,6 +78,27 @@ fn random_scene() -> HittableList {
     world
 }
 
+fn two_spheres() -> HittableList {
+    let mut world = HittableList::default();
+
+    let checker = Box::new(Checker::from_solid_colors(
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -10.0, 0.0),
+        10.0,
+        Box::new(Lambertian::from_texture(checker.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 10.0, 0.0),
+        10.0,
+        Box::new(Lambertian::from_texture(checker.clone())),
+    )));
+
+    world
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -111,7 +132,8 @@ impl Config {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Scene {
-    Canned,
+    Random,
+    TwoSpheres,
     List(HittableListConfig),
 }
 
@@ -140,7 +162,8 @@ fn main() {
     // Create World
     // let world = random_scene();
     let world = match config.scene {
-        Scene::Canned => random_scene(),
+        Scene::Random => random_scene(),
+        Scene::TwoSpheres => two_spheres(),
         Scene::List(c) => HittableList::from_config(c),
     };
     // BvhNode for the win!
