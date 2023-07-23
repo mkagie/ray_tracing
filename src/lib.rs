@@ -12,6 +12,8 @@ pub mod utils;
 
 pub mod cameras;
 
+pub mod aabb;
+
 pub type Vec3 = Vector3<f64>;
 pub type Point = Vec3;
 pub type Color = Vec3;

@@ -1,24 +1,42 @@
 //! Objects
+use std::cmp::Ordering;
+
 use crate::{
+    aabb::Aabb,
     materials::{self, MaterialConfig},
     utils::SerdeVector,
     Material, Point, Ray, Vec3,
 };
 use serde::{Deserialize, Serialize};
 
+pub type HittableObj = Box<dyn Hittable + Send + Sync>;
+
 pub trait Hittable {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+
+    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<Aabb>;
 }
 
 #[derive(Default)]
-pub struct HittableList(Vec<Box<dyn Hittable + Send + Sync>>);
+pub struct HittableList(pub Vec<HittableObj>);
 impl HittableList {
-    pub fn add(&mut self, boxed_obj: Box<dyn Hittable + Send + Sync>) {
+    pub fn add(&mut self, boxed_obj: HittableObj) {
         self.0.push(boxed_obj)
     }
 
     pub fn clear(&mut self) {
         self.0.clear()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn sort_by<F>(&mut self, f: F)
+    where
+        F: FnMut(&HittableObj, &HittableObj) -> Ordering,
+    {
+        self.0.sort_by(f);
     }
 
     pub fn from_config(config: HittableListConfig) -> Self {
@@ -43,6 +61,27 @@ impl Hittable for HittableList {
             }
         }
         hr_final
+    }
+
+    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<Aabb> {
+        if self.0.is_empty() {
+            return None;
+        }
+        let mut output_box: Option<Aabb> = None;
+
+        for obj in &self.0 {
+            match obj.try_bounding_box(time0, time1) {
+                Some(tmp_box) => {
+                    output_box = if let Some(output_box) = output_box {
+                        Some(output_box.surrounding_box(&tmp_box))
+                    } else {
+                        Some(tmp_box)
+                    };
+                }
+                None => return None,
+            }
+        }
+        output_box
     }
 }
 
@@ -138,6 +177,11 @@ impl Hittable for Sphere {
             dyn_clone::clone_box(&*self.material),
         ))
     }
+
+    fn try_bounding_box(&self, _time0: f64, _time1: f64) -> Option<Aabb> {
+        let v = Vec3::new(self.radius, self.radius, self.radius);
+        Some(Aabb::new(self.center - v, self.center + v))
+    }
 }
 
 /// Sphere config
@@ -215,5 +259,14 @@ impl Hittable for MovingSphere {
             &outward_normal,
             dyn_clone::clone_box(&*self.material),
         ))
+    }
+
+    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<Aabb> {
+        let v = Vec3::new(self.radius, self.radius, self.radius);
+
+        let box0 = Aabb::new(self.center(time0) - v, self.center(time0) + v);
+        let box1 = Aabb::new(self.center(time1) - v, self.center(time1) + v);
+
+        Some(box0.surrounding_box(&box1))
     }
 }
