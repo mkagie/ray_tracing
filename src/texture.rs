@@ -79,7 +79,12 @@ impl Noise {
 }
 impl Textured for Noise {
     fn value(&self, _u: f64, _v: f64, p: &Point) -> Color {
-        Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&(self.scale * p)))
+        // Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&(self.scale * p)))
+        // Color::new(1.0, 1.0, 1.0) * self.noise.turbulence(&(self.scale * p), None)
+        Color::new(1.0, 1.0, 1.0)
+            * 0.5
+            * (1.0
+                + (self.scale * p[2] + 10.0 * self.noise.turbulence(&(self.scale * p), None)).sin())
     }
 }
 
@@ -111,6 +116,20 @@ impl Default for Perlin {
     }
 }
 impl Perlin {
+    pub fn turbulence(&self, p: &Point, depth: Option<u32>) -> f64 {
+        let depth = depth.unwrap_or(7);
+        let mut accum = 0.0;
+        let mut temp_p = *p;
+        let mut weight = 1.0;
+
+        for _ in 0..depth {
+            accum += weight * self.noise(&temp_p);
+            weight *= 0.5;
+            temp_p = temp_p * 2.0;
+        }
+        accum.abs()
+    }
+
     pub fn noise(&self, p: &Point) -> f64 {
         let u = p[0] - p[0].floor();
         let v = p[1] - p[1].floor();
