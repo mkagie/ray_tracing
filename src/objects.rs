@@ -307,17 +307,33 @@ impl Hittable for MovingSphere {
     }
 }
 
+/// Type of rectangle
+pub enum RectangleType {
+    Xy,
+    Xz,
+    Yz,
+}
+
 /// XY Rectangle
-pub struct XyRectangle {
+pub struct Rectangle {
     material: Material,
     x0: f64,
     x1: f64,
     y0: f64,
     y1: f64,
     k: f64,
+    rtype: RectangleType,
 }
-impl XyRectangle {
-    pub fn new(material: Material, x0: f64, x1: f64, y0: f64, y1: f64, k: f64) -> Self {
+impl Rectangle {
+    pub fn new(
+        material: Material,
+        x0: f64,
+        x1: f64,
+        y0: f64,
+        y1: f64,
+        k: f64,
+        rtype: RectangleType,
+    ) -> Self {
         Self {
             material,
             x0,
@@ -325,23 +341,28 @@ impl XyRectangle {
             y0,
             y1,
             k,
+            rtype,
         }
     }
 }
-impl Hittable for XyRectangle {
+impl Hittable for Rectangle {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let t = (self.k - ray.orig[2]) / ray.dir[2];
+        let (orig_axis, x_axis, y_axis, outward_normal) = match self.rtype {
+            RectangleType::Xy => (2, 0, 1, Vec3::new(0.0, 0.0, 1.0)),
+            RectangleType::Xz => (1, 0, 2, Vec3::new(0.0, 1.0, 0.0)),
+            RectangleType::Yz => (0, 1, 2, Vec3::new(1.0, 0.0, 0.0)),
+        };
+        let t = (self.k - ray.orig[orig_axis]) / ray.dir[orig_axis];
         if t < t_min || t > t_max {
             return None;
         }
-        let x = ray.orig[0] + t * ray.dir[0];
-        let y = ray.orig[1] + t * ray.dir[1];
+        let x = ray.orig[x_axis] + t * ray.dir[x_axis];
+        let y = ray.orig[y_axis] + t * ray.dir[y_axis];
         if x < self.x0 || x > self.x1 || y < self.y0 || y > self.y1 {
             return None;
         }
         let u = (x - self.x0) / (self.x1 - self.x0);
         let v = (y - self.y0) / (self.y1 - self.y0);
-        let outward_normal = Vec3::new(0.0, 0.0, 1.0);
         let p = ray.get(t);
         Some(HitRecord::new(
             p,
@@ -355,9 +376,20 @@ impl Hittable for XyRectangle {
     }
 
     fn try_bounding_box(&self, _time0: f64, _time1: f64) -> Option<Aabb> {
-        Some(Aabb::new(
-            Point::new(self.x0, self.y0, self.k - 0.0001),
-            Point::new(self.x1, self.y1, self.k + 0.0001),
-        ))
+        let offset = 0.0001;
+        match self.rtype {
+            RectangleType::Xy => Some(Aabb::new(
+                Point::new(self.x0, self.y0, self.k - offset),
+                Point::new(self.x1, self.y1, self.k + offset),
+            )),
+            RectangleType::Xz => Some(Aabb::new(
+                Point::new(self.x0, self.k - offset, self.y0),
+                Point::new(self.x1, self.k + offset, self.y1),
+            )),
+            RectangleType::Yz => Some(Aabb::new(
+                Point::new(self.k - offset, self.x0, self.y0),
+                Point::new(self.k + offset, self.x1, self.y1),
+            )),
+        }
     }
 }

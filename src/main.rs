@@ -133,10 +133,81 @@ fn simple_light() -> HittableList {
     )));
 
     let difflight = Box::new(DiffuseLight::from_color(Color::new(4.0, 4.0, 4.0)));
-    world.add(Box::new(XyRectangle::new(
-        difflight, 3.0, 5.0, 1.0, 3.0, -2.0,
+    world.add(Box::new(Rectangle::new(
+        difflight,
+        3.0,
+        5.0,
+        1.0,
+        3.0,
+        -2.0,
+        RectangleType::Xy,
     )));
 
+    world
+}
+
+fn cornell_box() -> HittableList {
+    let mut world = HittableList::default();
+
+    let red = Box::new(Lambertian::new(Color::new(0.65, 0.05, 0.05)));
+    let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
+    let green = Box::new(Lambertian::new(Color::new(0.12, 0.45, 0.15)));
+    let light = Box::new(DiffuseLight::from_color(Color::new(15.0, 15.0, 15.0)));
+
+    world.add(Box::new(Rectangle::new(
+        green,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        red,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        light,
+        213.0,
+        343.0,
+        227.0,
+        332.0,
+        554.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xy,
+    )));
     world
 }
 
@@ -177,6 +248,7 @@ pub enum Scene {
     TwoSpheres,
     TwoPerlinSpheres,
     SimpleLight,
+    Cornell,
     List(HittableListConfig),
 }
 
@@ -209,6 +281,7 @@ fn main() {
         Scene::TwoSpheres => two_spheres(),
         Scene::TwoPerlinSpheres => two_perlin_spheres(),
         Scene::SimpleLight => simple_light(),
+        Scene::Cornell => cornell_box(),
         Scene::List(c) => HittableList::from_config(c),
     };
     // BvhNode for the win!
