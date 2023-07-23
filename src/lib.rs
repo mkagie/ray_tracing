@@ -48,7 +48,7 @@ impl Ray {
     }
 
     /// Linearly blends white and blue depending on height of y
-    pub fn get_color(&self, obj: &impl Hittable, depth: u32) -> Color {
+    pub fn get_color(&self, background_color: &Color, obj: &impl Hittable, depth: u32) -> Color {
         // If we have exceeded the ray bounce limit, no more light is gathered
         if depth == 0 {
             return Color::zeros();
@@ -56,16 +56,18 @@ impl Ray {
 
         // Put a minimum of 0.001 to reduce shadow acne
         if let Some(hr) = obj.try_hit(self, 0.001, f64::MAX) {
+            let emitted = hr.material.color_emitted(hr.u, hr.v, &hr.p);
             if let Some(sr) = hr.material.try_scatter(self, &hr) {
-                return sr
-                    .attenuation
-                    .component_mul(&sr.scattered.get_color(obj, depth - 1));
+                return emitted
+                    + sr.attenuation.component_mul(&sr.scattered.get_color(
+                        background_color,
+                        obj,
+                        depth - 1,
+                    ));
             }
-            return Color::zeros();
+            return emitted;
         }
-        // TODO(mkagie) Have a default color passed in -- although this matches the sky nicely
-        let unit_direction = self.dir.normalize();
-        let t = 0.5 * (unit_direction[1] + 1.0);
-        (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
+        // Did not hit anything
+        background_color.to_owned()
     }
 }

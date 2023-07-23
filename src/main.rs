@@ -189,6 +189,7 @@ fn main() {
     // BvhNode for the win!
     let world = BvhNode::new(world, 0.0, 1.0);
     let protected_world = Arc::new(RwLock::new(world));
+    let background_color = Color::new(0.70, 0.8, 1.0);
 
     let cam = Camera::new(
         config.camera.look_from.into(),
@@ -231,8 +232,12 @@ fn main() {
                 let ray = cam.get_ray(u, v);
                 let protected_world = Arc::clone(&protected_world);
                 pool.execute(move || {
-                    tx.send(ray.get_color(&*protected_world.read().unwrap(), config.max_depth))
-                        .unwrap();
+                    tx.send(ray.get_color(
+                        &background_color,
+                        &*protected_world.read().unwrap(),
+                        config.max_depth,
+                    ))
+                    .unwrap();
                 });
             }
             let pixel_color = worker_rx

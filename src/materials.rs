@@ -4,7 +4,7 @@ use crate::{
     objects::HitRecord,
     texture::{SolidColor, Texture},
     utils::{self, SerdeVector},
-    Color, Material, Ray,
+    Color, Material, Point, Ray,
 };
 use dyn_clone::DynClone;
 use rand::Rng;
@@ -13,6 +13,10 @@ use serde::{Deserialize, Serialize};
 /// Material
 pub trait Scatterable: DynClone {
     fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult>;
+
+    fn color_emitted(&self, _u: f64, _v: f64, _p: &Point) -> Color {
+        Color::zeros()
+    }
 }
 
 /// Scatter Result
@@ -197,4 +201,28 @@ impl Scatterable for Dielectric {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DielectricConfig {
     pub ir: f64,
+}
+
+/// Diffuse light for emitting
+pub struct DiffuseLight {
+    emit: Texture,
+}
+impl Clone for DiffuseLight {
+    fn clone(&self) -> Self {
+        Self::new(dyn_clone::clone_box(&*self.emit))
+    }
+}
+impl DiffuseLight {
+    pub fn new(emit: Texture) -> Self {
+        Self { emit }
+    }
+}
+impl Scatterable for DiffuseLight {
+    fn try_scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<ScatterResult> {
+        None
+    }
+
+    fn color_emitted(&self, u: f64, v: f64, p: &Point) -> Color {
+        self.emit.value(u, v, p)
+    }
 }
