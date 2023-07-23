@@ -12,11 +12,21 @@ use threadpool::ThreadPool;
 
 fn random_scene() -> HittableList {
     let mut world = HittableList::default();
-    let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    // let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    // world.add(Box::new(Sphere::new(
+    //     Point::new(0.0, -1000.0, 0.0),
+    //     1000.0,
+    //     ground_material,
+    // )));
+
+    let checker = Box::new(Checker::from_solid_colors(
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ));
     world.add(Box::new(Sphere::new(
         Point::new(0.0, -1000.0, 0.0),
         1000.0,
-        ground_material,
+        Box::new(Lambertian::from_texture(checker)),
     )));
 
     let mut rng = rand::thread_rng();

@@ -14,6 +14,8 @@ pub mod cameras;
 
 pub mod aabb;
 
+pub mod texture;
+
 pub type Vec3 = Vector3<f64>;
 pub type Point = Vec3;
 pub type Color = Vec3;
@@ -25,6 +27,7 @@ pub mod prelude {
     pub use crate::cameras::{Camera, CameraConfig};
     pub use crate::materials::{Dielectric, Lambertian, Metal};
     pub use crate::objects::{HittableList, HittableListConfig, MovingSphere, Sphere};
+    pub use crate::texture::Checker;
     pub use crate::{Color, Material, Point, Vec3};
 }
 

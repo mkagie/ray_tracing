@@ -117,11 +117,11 @@ impl BvhNode {
                 ) {
                     (Some(box_left), Some(box_right)) => {
                         let bbox = box_left.surrounding_box(&box_right);
-                        return Self {
+                        Self {
                             left,
                             right: Some(right),
                             bbox,
-                        };
+                        }
                     }
                     _ => panic!("No bounding box in bvh constructor"),
                 }
@@ -130,13 +130,11 @@ impl BvhNode {
                 // There is no right, just do left
                 let bbox = left.try_bounding_box(time0, time1);
                 match bbox {
-                    Some(bbox) => {
-                        return Self {
-                            left,
-                            right: None,
-                            bbox,
-                        }
-                    }
+                    Some(bbox) => Self {
+                        left,
+                        right: None,
+                        bbox,
+                    },
                     None => panic!("No bounding box in bvh constructor"),
                 }
             }

@@ -2,6 +2,7 @@
 
 use crate::{
     objects::HitRecord,
+    texture::{SolidColor, Texture},
     utils::{self, SerdeVector},
     Color, Material, Ray,
 };
@@ -45,19 +46,22 @@ impl Generator {
 }
 
 /// Lmabertian Scatterer
-#[derive(Debug, Clone)]
 pub struct Lambertian {
-    albedo: Color,
+    albedo: Texture,
 }
 impl Lambertian {
     pub fn new(albedo: Color) -> Self {
-        Self { albedo }
+        Self {
+            albedo: Box::new(SolidColor::new(albedo)),
+        }
+    }
+
+    pub fn from_texture(texture: Texture) -> Self {
+        Self { albedo: texture }
     }
 
     pub fn from_config(config: LambertianConfig) -> Self {
-        Self {
-            albedo: config.albedo.into(),
-        }
+        Self::new(config.albedo.into())
     }
 }
 impl Scatterable for Lambertian {
@@ -69,11 +73,18 @@ impl Scatterable for Lambertian {
             scatter_direction = hit_record.normal;
         }
         let scattered = Ray::new(hit_record.p, scatter_direction, ray_in.time);
-        let attenuation = self.albedo;
+        let attenuation = self.albedo.value(hit_record.u, hit_record.v, &hit_record.p);
         Some(ScatterResult {
             attenuation,
             scattered,
         })
+    }
+}
+impl Clone for Lambertian {
+    fn clone(&self) -> Self {
+        Self {
+            albedo: dyn_clone::clone_box(&*self.albedo),
+        }
     }
 }
 

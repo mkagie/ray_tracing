@@ -104,9 +104,21 @@ pub struct HitRecord {
     pub front_face: bool,
     /// Material
     pub material: Material,
+    /// U,V surface coordinates
+    pub u: f64,
+    /// U,V surface coordinates
+    pub v: f64,
 }
 impl HitRecord {
-    pub fn new(p: Point, t: f64, ray: &Ray, outward_normal: &Vec3, material: Material) -> Self {
+    pub fn new(
+        p: Point,
+        t: f64,
+        ray: &Ray,
+        outward_normal: &Vec3,
+        material: Material,
+        u: f64,
+        v: f64,
+    ) -> Self {
         let front_face = ray.dir.dot(outward_normal) < 0.0;
         let mut normal = outward_normal.to_owned();
         if !front_face {
@@ -118,6 +130,8 @@ impl HitRecord {
             t,
             front_face,
             material,
+            u,
+            v,
         }
     }
 }
@@ -143,6 +157,22 @@ impl Sphere {
             materials::Generator::from_config(config.material),
         )
     }
+
+    pub fn get_uv(p: &Point) -> (f64, f64) {
+        // p: a given point on the sphere of radius one, centered at the origin.
+        // u: returned value [0,1] of angle around the Y axis from X=-1.
+        // v: returned value [0,1] of angle from Y=-1 to Y=+1.
+        //     <1 0 0> yields <0.50 0.50>       <-1  0  0> yields <0.00 0.50>
+        //     <0 1 0> yields <0.50 1.00>       < 0 -1  0> yields <0.50 0.00>
+        //     <0 0 1> yields <0.25 0.50>       < 0  0 -1> yields <0.75 0.50>
+
+        let theta = (-p[1]).acos();
+        let phi = (-p[2]).atan2(p[0]) + std::f64::consts::PI;
+
+        let u = phi / (2.0 * std::f64::consts::PI);
+        let v = theta / std::f64::consts::PI;
+        (u, v)
+    }
 }
 impl Hittable for Sphere {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
@@ -167,6 +197,7 @@ impl Hittable for Sphere {
         let p = ray.get(root);
         let t = root;
         let outward_normal = ((p - self.center) / self.radius).normalize();
+        let (u, v) = Self::get_uv(&outward_normal);
         // NOTE -- we use dyn_clone here because self.material is a trait object -- you cannot
         // clone a trait object
         Some(HitRecord::new(
@@ -175,6 +206,8 @@ impl Hittable for Sphere {
             ray,
             &outward_normal,
             dyn_clone::clone_box(&*self.material),
+            u,
+            v,
         ))
     }
 
@@ -250,6 +283,7 @@ impl Hittable for MovingSphere {
         let p = ray.get(root);
         let t = root;
         let outward_normal = ((p - self.center(ray.time)) / self.radius).normalize();
+        let (u, v) = Sphere::get_uv(&outward_normal);
         // NOTE -- we use dyn_clone here because self.material is a trait object -- you cannot
         // clone a trait object
         Some(HitRecord::new(
@@ -258,6 +292,8 @@ impl Hittable for MovingSphere {
             ray,
             &outward_normal,
             dyn_clone::clone_box(&*self.material),
+            u,
+            v,
         ))
     }
 
