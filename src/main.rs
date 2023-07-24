@@ -431,7 +431,7 @@ fn final_scene() -> HittableList {
     let mut boxes2 = HittableList::default();
     let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
     let ns = 1000;
-    for j in 0..ns {
+    for _ in 0..ns {
         boxes2.add(Box::new(Sphere::new(
             Point::new(
                 rng.gen_range(0.0..165.0),
@@ -442,6 +442,11 @@ fn final_scene() -> HittableList {
             white.clone(),
         )));
     }
+    objects.add(Box::new(Translate::new(
+        Box::new(RotateY::new(Box::new(BvhNode::new(boxes2, 0.0, 1.0)), 15.0)),
+        Vec3::new(-100.0, 270.0, 395.0),
+    )));
+
     objects
 }
 
