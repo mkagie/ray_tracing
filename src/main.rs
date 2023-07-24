@@ -209,16 +209,32 @@ fn cornell_box() -> HittableList {
         RectangleType::Xy,
     )));
 
-    world.add(Box::new(BoxObj::new(
-        Point::new(130.0, 0.0, 65.0),
-        Point::new(295.0, 165.0, 230.0),
+    let box1 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 330.0, 165.0),
         white.clone(),
-    )));
-    world.add(Box::new(BoxObj::new(
-        Point::new(265.0, 0.0, 295.0),
-        Point::new(430.0, 330.0, 460.0),
+    ));
+    let box1 = Box::new(RotateY::new(box1, 15.0));
+    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+    world.add(box1);
+    let box2 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 165.0, 165.0),
         white,
-    )));
+    ));
+    let box2 = Box::new(RotateY::new(box2, -18.0));
+    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+    world.add(box2);
+    // world.add(Box::new(BoxObj::new(
+    //     Point::new(130.0, 0.0, 65.0),
+    //     Point::new(295.0, 165.0, 230.0),
+    //     white.clone(),
+    // )));
+    // world.add(Box::new(BoxObj::new(
+    //     Point::new(265.0, 0.0, 295.0),
+    //     Point::new(430.0, 330.0, 460.0),
+    //     white,
+    // )));
     world
 }
 

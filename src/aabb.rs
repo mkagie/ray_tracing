@@ -8,8 +8,8 @@ use rand::Rng;
 
 #[derive(Debug, Clone)]
 pub struct Aabb {
-    min: Point,
-    max: Point,
+    pub min: Point,
+    pub max: Point,
 }
 impl Aabb {
     pub fn new(min: Point, max: Point) -> Self {
