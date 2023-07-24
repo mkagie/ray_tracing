@@ -18,6 +18,8 @@ pub mod texture;
 
 pub mod transrot;
 
+pub mod medium;
+
 pub type Vec3 = Vector3<f64>;
 pub type Point = Vec3;
 pub type Color = Vec3;
@@ -28,6 +30,7 @@ pub mod prelude {
     pub use crate::aabb::BvhNode;
     pub use crate::cameras::{Camera, CameraConfig};
     pub use crate::materials::{Dielectric, DiffuseLight, Lambertian, Metal};
+    pub use crate::medium::ConstantMedium;
     pub use crate::objects::{
         BoxObj, HittableList, HittableListConfig, HittableObj, MovingSphere, Rectangle,
         RectangleType, Sphere,

@@ -232,3 +232,34 @@ impl Scatterable for DiffuseLight {
         self.emit.value(u, v, p)
     }
 }
+
+/// Isotropic
+pub struct Isotropic {
+    albedo: Texture,
+}
+impl Clone for Isotropic {
+    fn clone(&self) -> Self {
+        Self::new(dyn_clone::clone_box(&*self.albedo))
+    }
+}
+impl Isotropic {
+    pub fn new(a: Texture) -> Self {
+        Self { albedo: a }
+    }
+
+    pub fn from_color(c: Color) -> Self {
+        Self {
+            albedo: Box::new(SolidColor::new(c)),
+        }
+    }
+}
+impl Scatterable for Isotropic {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+        let scattered = Ray::new(hit_record.p, utils::random_in_unit_sphere(), ray_in.time);
+        let attenuation = self.albedo.value(hit_record.u, hit_record.v, &hit_record.p);
+        Some(ScatterResult {
+            attenuation,
+            scattered,
+        })
+    }
+}

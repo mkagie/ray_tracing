@@ -238,6 +238,97 @@ fn cornell_box() -> HittableList {
     world
 }
 
+fn cornell_smoke() -> HittableList {
+    let mut world = HittableList::default();
+
+    let red = Box::new(Lambertian::new(Color::new(0.65, 0.05, 0.05)));
+    let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
+    let green = Box::new(Lambertian::new(Color::new(0.12, 0.45, 0.15)));
+    let light = Box::new(DiffuseLight::from_color(Color::new(7.0, 7.0, 7.0)));
+
+    world.add(Box::new(Rectangle::new(
+        green,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        red,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        light,
+        113.0,
+        443.0,
+        127.0,
+        432.0,
+        554.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xy,
+    )));
+
+    let box1 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 330.0, 165.0),
+        white.clone(),
+    ));
+    let box1 = Box::new(RotateY::new(box1, 15.0));
+    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+    let box2 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 165.0, 165.0),
+        white.clone(),
+    ));
+    let box2 = Box::new(RotateY::new(box2, -18.0));
+    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+
+    world.add(Box::new(ConstantMedium::from_color(
+        box1,
+        0.01,
+        Color::new(0.0, 0.0, 0.0),
+    )));
+    world.add(Box::new(ConstantMedium::from_color(
+        box2,
+        0.01,
+        Color::new(1.0, 1.0, 1.0),
+    )));
+    world
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -276,6 +367,7 @@ pub enum Scene {
     TwoPerlinSpheres,
     SimpleLight,
     Cornell,
+    CornellSmoke,
     List(HittableListConfig),
 }
 
@@ -309,6 +401,7 @@ fn main() {
         Scene::TwoPerlinSpheres => two_perlin_spheres(),
         Scene::SimpleLight => simple_light(),
         Scene::Cornell => cornell_box(),
+        Scene::CornellSmoke => cornell_smoke(),
         Scene::List(c) => HittableList::from_config(c),
     };
     // BvhNode for the win!
