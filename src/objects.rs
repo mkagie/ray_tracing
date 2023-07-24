@@ -174,6 +174,15 @@ impl Sphere {
         (u, v)
     }
 }
+impl Clone for Sphere {
+    fn clone(&self) -> Self {
+        Self::new(
+            self.center,
+            self.radius,
+            dyn_clone::clone_box(&*self.material),
+        )
+    }
+}
 impl Hittable for Sphere {
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = ray.orig - self.center;
