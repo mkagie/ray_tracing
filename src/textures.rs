@@ -5,15 +5,19 @@ use rand::Rng;
 
 use crate::{utils, Color, Point, Vec3};
 
+/// Texture -- Dictates color and pattern
 pub type Texture = Box<dyn Textured + Send + Sync>;
 
+/// Dictates color and pattern
 pub trait Textured: DynClone {
+    /// Get value at a certain point
     fn value(&self, u: f64, v: f64, p: &Point) -> Color;
 }
 
 /// Solid Color
 #[derive(Debug, Clone)]
 pub struct SolidColor {
+    /// Color
     color_value: Color,
 }
 impl SolidColor {
@@ -37,6 +41,7 @@ impl Checker {
         Self { odd, even }
     }
 
+    /// Generate from two colors
     pub fn from_solid_colors(c1: Color, c2: Color) -> Self {
         Self {
             even: Box::new(SolidColor::new(c1)),
@@ -66,7 +71,9 @@ impl Textured for Checker {
 /// Noise Texture
 #[derive(Default, Clone)]
 pub struct Noise {
+    /// Noise pattern
     noise: Perlin,
+    /// Scale of the noise
     scale: f64,
 }
 impl Noise {
@@ -91,9 +98,13 @@ impl Textured for Noise {
 /// Perlin Texture
 #[derive(Debug, Clone)]
 struct Perlin {
+    /// Random vector
     ranvec: Vec<Vec3>,
+    /// Permutation in x
     perm_x: Vec<i32>,
+    /// Permutation in y
     perm_y: Vec<i32>,
+    /// Permutation in z
     perm_z: Vec<i32>,
 }
 impl Default for Perlin {
@@ -116,6 +127,7 @@ impl Default for Perlin {
     }
 }
 impl Perlin {
+    /// Compute the amount of turbulence in the pattern
     pub fn turbulence(&self, p: &Point, depth: Option<u32>) -> f64 {
         let depth = depth.unwrap_or(7);
         let mut accum = 0.0;
@@ -130,6 +142,7 @@ impl Perlin {
         accum.abs()
     }
 
+    /// Compute the noise at a point
     pub fn noise(&self, p: &Point) -> f64 {
         let u = p[0] - p[0].floor();
         let v = p[1] - p[1].floor();
@@ -158,6 +171,7 @@ impl Perlin {
 
     const POINT_COUNT: usize = 256;
 
+    /// Generate permutation
     fn perlin_generate_perm() -> Vec<i32> {
         let mut p = Vec::with_capacity(Self::POINT_COUNT);
 
@@ -168,6 +182,7 @@ impl Perlin {
         p
     }
 
+    /// Permute a vector
     fn permute(p: &mut [i32], n: usize) {
         let mut rng = rand::thread_rng();
         for i in (1..n).rev() {
@@ -176,6 +191,7 @@ impl Perlin {
         }
     }
 
+    /// Interpolation
     fn _trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         let mut accum = 0.0;
         for i in 0..2 {
@@ -194,6 +210,7 @@ impl Perlin {
         accum
     }
 
+    /// Interpolation of perlin
     fn perlin_interp(c: [[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         // Hermitian Smoothing
         let uu = u.powi(2) * (3.0 - 2.0 * u);

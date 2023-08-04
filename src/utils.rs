@@ -33,6 +33,7 @@ pub fn random_in_hemisphere(normal: &Vec3) -> Vec3 {
     }
 }
 
+/// Write a color to the screen
 pub fn write_color(color: &Color, samples_per_pixel: usize) {
     let scale = 1.0 / samples_per_pixel as f64;
 
@@ -44,6 +45,7 @@ pub fn write_color(color: &Color, samples_per_pixel: usize) {
     println!("{r} {g} {b}");
 }
 
+/// Convert a color to the proper RGB value
 pub fn get_pixel(color: &Color, samples_per_pixel: usize) -> Rgb<u8> {
     let scale = 1.0 / samples_per_pixel as f64;
 
@@ -73,6 +75,7 @@ pub fn gen_random(len: usize, min: Option<f64>, max: Option<f64>) -> Vec3 {
     )
 }
 
+/// Compute the refracted vector
 pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
     let cos_theta = -uv.dot(n).min(1.0);
     let r_out_perp = etai_over_etat * (uv + cos_theta * n);
@@ -80,6 +83,7 @@ pub fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
     r_out_perp + r_out_parallel
 }
 
+/// Compute the reflected vector
 pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
     v - 2.0 * v.dot(n) * n
 }

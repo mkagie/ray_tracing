@@ -1,4 +1,6 @@
-//! Axis-Aligned Bounding Boxes
+//! Axis-Aligned Bounding Boxes and Bounding Volume Hierarchies
+//!
+//! For optimizing computations
 
 use std::cmp::Ordering;
 
@@ -6,6 +8,9 @@ use crate::objects::{Hittable, HittableList, HittableObj};
 use crate::{Point, Ray};
 use rand::Rng;
 
+/// Axis-Aligned Bounding Box
+///
+/// A data structure to bound many objects to speed up computations
 #[derive(Debug, Clone)]
 pub struct Aabb {
     pub min: Point,
@@ -16,6 +21,9 @@ impl Aabb {
         Self { min, max }
     }
 
+    /// Whether the box is hit by a ray between the time range
+    ///
+    /// Original implementation from the paper
     pub fn hit_orig(&self, r: &Ray, mut t_min: f64, mut t_max: f64) -> bool {
         for a in 0..3 {
             let t0 =
@@ -32,6 +40,9 @@ impl Aabb {
         true
     }
 
+    /// Whether the box is hit by a ray between the time range
+    ///
+    /// Improved implementation
     pub fn hit(&self, r: &Ray, mut t_min: f64, mut t_max: f64) -> bool {
         for a in 0..3 {
             let inv_d = 1.0 / r.dir[a];
@@ -49,6 +60,7 @@ impl Aabb {
         true
     }
 
+    /// Compute the surrounding AABB between this and another
     pub fn surrounding_box(&self, other: &Aabb) -> Aabb {
         let small = Point::new(
             self.min[0].min(other.min[0]),
@@ -65,6 +77,8 @@ impl Aabb {
 }
 
 /// Bounding Volume Hierarchy
+///
+/// Tree structure
 pub struct BvhNode {
     left: HittableObj,
     // Going to make right an Option, so we don't have to clone left
@@ -177,8 +191,7 @@ impl Hittable for BvhNode {
     }
 }
 
-// TODO(mkagie) Make a member function inside HiitableObj -- compare_box
-/// Compare first box to second
+/// Compare boxes from two HittableObjs
 fn box_compare(a: &HittableObj, b: &HittableObj, axis: usize) -> Ordering {
     let box_a = a.try_bounding_box(0.0, 0.0);
     let box_b = b.try_bounding_box(0.0, 0.0);

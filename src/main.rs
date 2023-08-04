@@ -571,7 +571,7 @@ fn main() {
                 let tx = worker_tx.clone();
                 let u = (i as f64 + rng.gen::<f64>()) / (config.image_width - 1) as f64;
                 let v = (j as f64 + rng.gen::<f64>()) / (image_height - 1) as f64;
-                let ray = cam.get_ray(u, v);
+                let ray = cam.ray(u, v);
                 let protected_world = Arc::clone(&protected_world);
                 pool.execute(move || {
                     tx.send(ray.get_color(

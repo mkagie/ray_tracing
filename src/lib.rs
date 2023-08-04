@@ -2,23 +2,17 @@
 
 use nalgebra::Vector3;
 
-pub mod objects;
-use objects::Hittable;
-
+pub mod bvh;
+pub mod cameras;
 pub mod materials;
-use materials::Scatterable;
-
+pub mod mediums;
+pub mod objects;
+pub mod textures;
+pub mod transrot;
 pub mod utils;
 
-pub mod cameras;
-
-pub mod aabb;
-
-pub mod texture;
-
-pub mod transrot;
-
-pub mod medium;
+use materials::Scatterable;
+use objects::Hittable;
 
 pub type Vec3 = Vector3<f64>;
 pub type Point = Vec3;
@@ -27,15 +21,15 @@ pub type Material = Box<dyn Scatterable + Send + Sync>;
 
 /// Prelude
 pub mod prelude {
-    pub use crate::aabb::BvhNode;
+    pub use crate::bvh::BvhNode;
     pub use crate::cameras::{Camera, CameraConfig};
     pub use crate::materials::{Dielectric, DiffuseLight, Lambertian, Metal};
-    pub use crate::medium::ConstantMedium;
+    pub use crate::mediums::ConstantMedium;
     pub use crate::objects::{
         BoxObj, HittableList, HittableListConfig, HittableObj, MovingSphere, Rectangle,
         RectangleType, Sphere,
     };
-    pub use crate::texture::{Checker, Noise};
+    pub use crate::textures::{Checker, Noise};
     pub use crate::transrot::{RotateY, Translate};
     pub use crate::{Color, Material, Point, Vec3};
 }
@@ -52,11 +46,13 @@ impl Ray {
         Self { orig, dir, time }
     }
 
+    /// Get the location of the ray at a certain time
     pub fn get(&self, t: f64) -> Point {
         self.orig + t * self.dir
     }
 
-    /// Linearly blends white and blue depending on height of y
+    /// Get the color of the ray given a background color, list of things to hit, and a number of
+    /// bounces allowed
     pub fn get_color(&self, background_color: &Color, obj: &impl Hittable, depth: u32) -> Color {
         // If we have exceeded the ray bounce limit, no more light is gathered
         if depth == 0 {

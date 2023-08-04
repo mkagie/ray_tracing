@@ -2,7 +2,7 @@
 
 use crate::{
     objects::HitRecord,
-    texture::{SolidColor, Texture},
+    textures::{SolidColor, Texture},
     utils::{self, SerdeVector},
     Color, Material, Point, Ray,
 };
@@ -12,8 +12,10 @@ use serde::{Deserialize, Serialize};
 
 /// Material
 pub trait Scatterable: DynClone {
+    /// Try to scatter after a hit
     fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult>;
 
+    /// Get the color emitted upon scattering
     fn color_emitted(&self, _u: f64, _v: f64, _p: &Point) -> Color {
         Color::zeros()
     }
@@ -51,6 +53,7 @@ impl Generator {
 
 /// Lmabertian Scatterer
 pub struct Lambertian {
+    /// Texture of the lambertian
     albedo: Texture,
 }
 impl Lambertian {
@@ -60,10 +63,12 @@ impl Lambertian {
         }
     }
 
+    /// Convert straight from a texture
     pub fn from_texture(texture: Texture) -> Self {
         Self { albedo: texture }
     }
 
+    /// Generate from a config
     pub fn from_config(config: LambertianConfig) -> Self {
         Self::new(config.albedo.into())
     }
@@ -95,13 +100,16 @@ impl Clone for Lambertian {
 /// Lambertian Config
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LambertianConfig {
+    /// Color for the albedo
     pub albedo: SerdeVector,
 }
 
 /// Metal Scatterer
 #[derive(Debug, Clone)]
 pub struct Metal {
+    /// Color
     albedo: Color,
+    /// Amount to fuzz the reflection
     fuzz: f64,
 }
 impl Metal {
@@ -109,6 +117,7 @@ impl Metal {
         Self { albedo, fuzz }
     }
 
+    /// Generate from a config
     pub fn from_config(config: MetalConfig) -> Self {
         Self {
             albedo: config.albedo.into(),
@@ -139,13 +148,16 @@ impl Scatterable for Metal {
 /// Metal Config
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MetalConfig {
+    /// Color
     pub albedo: SerdeVector,
+    /// Amount to fuzz the reflection
     fuzz: f64,
 }
 
 /// A Dielectric is a refractive material, such as glass
 #[derive(Debug, Clone)]
 pub struct Dielectric {
+    /// Reflectance
     ir: f64,
 }
 impl Dielectric {
@@ -153,10 +165,12 @@ impl Dielectric {
         Self { ir }
     }
 
+    /// Generate from a config
     pub fn from_config(config: DielectricConfig) -> Self {
         Self { ir: config.ir }
     }
 
+    /// Compute the reflectance
     fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
         // Use Schlick's approximation for reflectance
         let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powi(2);
@@ -182,8 +196,6 @@ impl Scatterable for Dielectric {
         let direction = if cannot_refract
             || Self::reflectance(cos_theta, refraction_ratio) > rng.gen::<f64>()
         {
-            // TODO(mkagie) Remove reflect and refract from Metal and Dielectric, since they are no
-            // longer tied to them
             utils::reflect(&unit_direction, &hit_record.normal)
         } else {
             utils::refract(&unit_direction, &hit_record.normal, refraction_ratio)
@@ -200,11 +212,13 @@ impl Scatterable for Dielectric {
 /// Dielectric Config
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DielectricConfig {
+    /// Reflectance
     pub ir: f64,
 }
 
 /// Diffuse light for emitting
 pub struct DiffuseLight {
+    /// Color to emit from the light
     emit: Texture,
 }
 impl Clone for DiffuseLight {
@@ -217,6 +231,8 @@ impl DiffuseLight {
         Self { emit }
     }
 
+    /// Generate from a color
+    // TODO(mkagie) this is inconsistent with above
     pub fn from_color(color: Color) -> Self {
         Self {
             emit: Box::new(SolidColor::new(color)),
@@ -235,6 +251,7 @@ impl Scatterable for DiffuseLight {
 
 /// Isotropic
 pub struct Isotropic {
+    /// Color
     albedo: Texture,
 }
 impl Clone for Isotropic {
@@ -247,6 +264,8 @@ impl Isotropic {
         Self { albedo: a }
     }
 
+    /// Generate from a color
+    // TODO(mkagie) This is inconsistent
     pub fn from_color(c: Color) -> Self {
         Self {
             albedo: Box::new(SolidColor::new(c)),

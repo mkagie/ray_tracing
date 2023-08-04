@@ -1,7 +1,7 @@
 //! Translation and rotation
 
 use crate::{
-    aabb::Aabb,
+    bvh::Aabb,
     objects::{HitRecord, Hittable, HittableObj},
     Point, Ray, Vec3,
 };
@@ -40,9 +40,13 @@ impl Hittable for Translate {
 
 // TODO(mkagie) Revisit this and make it more generic
 pub struct RotateY {
+    /// Object to rotate
     obj: HittableObj,
+    /// Sin(theta)
     sin_theta: f64,
+    /// Cos(theta)
     cos_theta: f64,
+    /// Bounding axis-aligned box
     bbox: Option<Aabb>,
 }
 impl RotateY {

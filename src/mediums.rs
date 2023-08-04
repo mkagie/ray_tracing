@@ -6,28 +6,33 @@ use crate::{
     materials::Isotropic,
     objects::{HitRecord, Hittable},
     prelude::HittableObj,
-    texture::{SolidColor, Texture},
+    textures::{SolidColor, Texture},
     Color, Material, Vec3,
 };
 
 /// Constant Medium
 pub struct ConstantMedium {
+    /// Boundary as defined by a hittable object
     boundary: HittableObj,
+    /// Material to define the medium
     phase_function: Material,
+    /// 1 over density
     neg_inv_density: f64,
 }
 impl ConstantMedium {
-    pub fn new(b: HittableObj, d: f64, a: Texture) -> Self {
+    pub fn new(boundary: HittableObj, density: f64, albedo: Texture) -> Self {
         Self {
-            boundary: b,
-            phase_function: Box::new(Isotropic::new(a)),
-            neg_inv_density: -1.0 / d,
+            boundary,
+            phase_function: Box::new(Isotropic::new(albedo)),
+            neg_inv_density: -1.0 / density,
         }
     }
 
-    pub fn from_color(b: HittableObj, d: f64, c: Color) -> Self {
-        let t = Box::new(SolidColor::new(c));
-        Self::new(b, d, t)
+    /// Generate from color
+    // TODO(mkagie) This is inconsistent
+    pub fn from_color(boundary: HittableObj, density: f64, color: Color) -> Self {
+        let t = Box::new(SolidColor::new(color));
+        Self::new(boundary, density, t)
     }
 }
 impl Hittable for ConstantMedium {
@@ -81,7 +86,7 @@ impl Hittable for ConstantMedium {
         }
     }
 
-    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<crate::aabb::Aabb> {
+    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<crate::bvh::Aabb> {
         self.boundary.try_bounding_box(time0, time1)
     }
 }
