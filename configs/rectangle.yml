@@ -1,14 +1,14 @@
 image_width: 400
-samples_per_pixel: 100
+samples_per_pixel: 400
 max_depth: 50
 camera:
   look_from:
-    x: 13.0
-    y: 2.0
-    z: 3.0
+    x: 26.0
+    y: 3.0
+    z: 6.0
   look_at:
     x: 0.0
-    y: 0.0
+    y: 2.0
     z: 0.0
   v_up:
     x: 0.0
@@ -19,4 +19,4 @@ camera:
   aperture: 0.1
   focus_distance: 10.0
 scene:
-  type: TwoPerlinSpheres
+  type: SimpleLight

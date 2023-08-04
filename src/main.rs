@@ -10,13 +10,23 @@ use serde::{Deserialize, Serialize};
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-fn _random_scene() -> HittableList {
+fn random_scene() -> HittableList {
     let mut world = HittableList::default();
-    let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    // let ground_material = Box::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    // world.add(Box::new(Sphere::new(
+    //     Point::new(0.0, -1000.0, 0.0),
+    //     1000.0,
+    //     ground_material,
+    // )));
+
+    let checker = Box::new(Checker::from_solid_colors(
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ));
     world.add(Box::new(Sphere::new(
         Point::new(0.0, -1000.0, 0.0),
         1000.0,
-        ground_material,
+        Box::new(Lambertian::from_texture(checker)),
     )));
 
     let mut rng = rand::thread_rng();
@@ -35,7 +45,15 @@ fn _random_scene() -> HittableList {
                     let albedo = utils::gen_random(3, None, None)
                         .component_mul(&utils::gen_random(3, None, None));
                     let sphere_material = Box::new(Lambertian::new(albedo));
-                    world.add(Box::new(Sphere::new(center, 0.2, sphere_material)));
+                    let center2 = center + Vec3::new(0.0, rng.gen_range(0.0..0.5), 0.0);
+                    world.add(Box::new(MovingSphere::new(
+                        center,
+                        center2,
+                        0.0,
+                        1.0,
+                        0.2,
+                        sphere_material,
+                    )));
                 } else if choose_mat < 0.95 {
                     // Metal
                     let albedo = utils::gen_random(3, Some(0.5), Some(1.0));
@@ -60,6 +78,378 @@ fn _random_scene() -> HittableList {
     world
 }
 
+fn two_spheres() -> HittableList {
+    let mut world = HittableList::default();
+
+    let checker = Box::new(Checker::from_solid_colors(
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9),
+    ));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -10.0, 0.0),
+        10.0,
+        Box::new(Lambertian::from_texture(checker.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 10.0, 0.0),
+        10.0,
+        Box::new(Lambertian::from_texture(checker)),
+    )));
+
+    world
+}
+
+fn two_perlin_spheres() -> HittableList {
+    let mut world = HittableList::default();
+
+    let pertext = Box::new(Noise::new(4.0));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Box::new(Lambertian::from_texture(pertext.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 2.0, 0.0),
+        2.0,
+        Box::new(Lambertian::from_texture(pertext)),
+    )));
+
+    world
+}
+
+fn simple_light() -> HittableList {
+    let mut world = HittableList::default();
+
+    let pertext = Box::new(Noise::new(4.0));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Box::new(Lambertian::from_texture(pertext.clone())),
+    )));
+    world.add(Box::new(Sphere::new(
+        Point::new(0.0, 2.0, 0.0),
+        2.0,
+        Box::new(Lambertian::from_texture(pertext)),
+    )));
+
+    let difflight = Box::new(DiffuseLight::from_color(Color::new(4.0, 4.0, 4.0)));
+    world.add(Box::new(Rectangle::new(
+        difflight,
+        3.0,
+        5.0,
+        1.0,
+        3.0,
+        -2.0,
+        RectangleType::Xy,
+    )));
+
+    world
+}
+
+fn cornell_box() -> HittableList {
+    let mut world = HittableList::default();
+
+    let red = Box::new(Lambertian::new(Color::new(0.65, 0.05, 0.05)));
+    let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
+    let green = Box::new(Lambertian::new(Color::new(0.12, 0.45, 0.15)));
+    let light = Box::new(DiffuseLight::from_color(Color::new(15.0, 15.0, 15.0)));
+
+    world.add(Box::new(Rectangle::new(
+        green,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        red,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        light,
+        213.0,
+        343.0,
+        227.0,
+        332.0,
+        554.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xy,
+    )));
+
+    let box1 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 330.0, 165.0),
+        white.clone(),
+    ));
+    let box1 = Box::new(RotateY::new(box1, 15.0));
+    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+    world.add(box1);
+    let box2 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 165.0, 165.0),
+        white,
+    ));
+    let box2 = Box::new(RotateY::new(box2, -18.0));
+    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+    world.add(box2);
+    // world.add(Box::new(BoxObj::new(
+    //     Point::new(130.0, 0.0, 65.0),
+    //     Point::new(295.0, 165.0, 230.0),
+    //     white.clone(),
+    // )));
+    // world.add(Box::new(BoxObj::new(
+    //     Point::new(265.0, 0.0, 295.0),
+    //     Point::new(430.0, 330.0, 460.0),
+    //     white,
+    // )));
+    world
+}
+
+fn cornell_smoke() -> HittableList {
+    let mut world = HittableList::default();
+
+    let red = Box::new(Lambertian::new(Color::new(0.65, 0.05, 0.05)));
+    let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
+    let green = Box::new(Lambertian::new(Color::new(0.12, 0.45, 0.15)));
+    let light = Box::new(DiffuseLight::from_color(Color::new(7.0, 7.0, 7.0)));
+
+    world.add(Box::new(Rectangle::new(
+        green,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        red,
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Yz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        light,
+        113.0,
+        443.0,
+        127.0,
+        432.0,
+        554.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        0.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xz,
+    )));
+    world.add(Box::new(Rectangle::new(
+        white.clone(),
+        0.0,
+        555.0,
+        0.0,
+        555.0,
+        555.0,
+        RectangleType::Xy,
+    )));
+
+    let box1 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 330.0, 165.0),
+        white.clone(),
+    ));
+    let box1 = Box::new(RotateY::new(box1, 15.0));
+    let box1 = Box::new(Translate::new(box1, Vec3::new(265.0, 0.0, 295.0)));
+    let box2 = Box::new(BoxObj::new(
+        Point::new(0.0, 0.0, 0.0),
+        Point::new(165.0, 165.0, 165.0),
+        white,
+    ));
+    let box2 = Box::new(RotateY::new(box2, -18.0));
+    let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));
+
+    world.add(Box::new(ConstantMedium::from_color(
+        box1,
+        0.01,
+        Color::new(0.0, 0.0, 0.0),
+    )));
+    world.add(Box::new(ConstantMedium::from_color(
+        box2,
+        0.01,
+        Color::new(1.0, 1.0, 1.0),
+    )));
+    world
+}
+
+fn final_scene() -> HittableList {
+    let mut boxes1 = HittableList::default();
+    let ground = Box::new(Lambertian::new(Color::new(0.48, 0.83, 0.53)));
+
+    let boxes_per_side = 20;
+
+    let mut rng = rand::thread_rng();
+
+    for i in 0..boxes_per_side {
+        for j in 0..boxes_per_side {
+            let w = 100.0;
+            let x0 = -1000.0 + i as f64 * w;
+            let z0 = -1000.0 + j as f64 * w;
+            let y0 = 0.0;
+            let x1 = x0 + w;
+            let y1 = rng.gen_range(1.0..101.0);
+            let z1 = z0 + w;
+
+            boxes1.add(Box::new(BoxObj::new(
+                Point::new(x0, y0, z0),
+                Point::new(x1, y1, z1),
+                ground.clone(),
+            )));
+        }
+    }
+
+    let mut objects = HittableList::default();
+    objects.add(Box::new(BvhNode::new(boxes1, 0.0, 1.0)));
+
+    let light = Box::new(DiffuseLight::from_color(Color::new(7.0, 7.0, 7.0)));
+    objects.add(Box::new(Rectangle::new(
+        light,
+        123.0,
+        423.0,
+        147.0,
+        412.0,
+        554.0,
+        RectangleType::Xz,
+    )));
+
+    let center1 = Point::new(400.0, 400.0, 200.0);
+    let center2 = center1 + Vec3::new(30.0, 0.0, 0.0);
+    let moving_sphere_material = Box::new(Lambertian::new(Color::new(0.7, 0.3, 0.1)));
+    objects.add(Box::new(MovingSphere::new(
+        center1,
+        center2,
+        0.0,
+        1.0,
+        50.0,
+        moving_sphere_material,
+    )));
+
+    objects.add(Box::new(Sphere::new(
+        Point::new(260.0, 150.0, 45.0),
+        50.0,
+        Box::new(Dielectric::new(1.5)),
+    )));
+    objects.add(Box::new(Sphere::new(
+        Point::new(0.0, 150.0, 145.0),
+        50.0,
+        Box::new(Metal::new(Color::new(0.8, 0.8, 0.9), 1.0)),
+    )));
+
+    let boundary = Box::new(Sphere::new(
+        Point::new(360.0, 150.0, 145.0),
+        70.0,
+        Box::new(Dielectric::new(1.5)),
+    ));
+    objects.add(boundary.clone());
+    objects.add(Box::new(ConstantMedium::from_color(
+        boundary,
+        0.2,
+        Color::new(0.2, 0.4, 0.9),
+    )));
+
+    let boundary = Box::new(Sphere::new(
+        Point::zeros(),
+        5000.0,
+        Box::new(Dielectric::new(1.5)),
+    ));
+    objects.add(Box::new(ConstantMedium::from_color(
+        boundary,
+        0.0001,
+        Color::new(1.0, 1.0, 1.0),
+    )));
+
+    let constant_color = Box::new(Lambertian::new(Color::new(0.0, 1.0, 0.0)));
+    objects.add(Box::new(Sphere::new(
+        Point::new(400.0, 200.0, 400.0),
+        100.0,
+        constant_color,
+    )));
+    let pertext = Box::new(Noise::new(0.1));
+    objects.add(Box::new(Sphere::new(
+        Point::new(220.0, 280.0, 300.0),
+        80.0,
+        Box::new(Lambertian::from_texture(pertext)),
+    )));
+
+    let mut boxes2 = HittableList::default();
+    let white = Box::new(Lambertian::new(Color::new(0.73, 0.73, 0.73)));
+    let ns = 1000;
+    for _ in 0..ns {
+        boxes2.add(Box::new(Sphere::new(
+            Point::new(
+                rng.gen_range(0.0..165.0),
+                rng.gen_range(0.0..165.0),
+                rng.gen_range(0.0..165.0),
+            ),
+            10.0,
+            white.clone(),
+        )));
+    }
+    objects.add(Box::new(Translate::new(
+        Box::new(RotateY::new(Box::new(BvhNode::new(boxes2, 0.0, 1.0)), 15.0)),
+        Vec3::new(-100.0, 270.0, 395.0),
+    )));
+
+    objects
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     /// Aspect ratio (width / height)
@@ -73,7 +463,7 @@ struct Config {
     #[serde(default = "Config::default_max_depth")]
     max_depth: u32,
     camera: CameraConfig,
-    objects: HittableListConfig,
+    scene: Scene,
 }
 impl Config {
     fn default_image_width() -> usize {
@@ -87,6 +477,20 @@ impl Config {
     fn default_max_depth() -> u32 {
         50
     }
+}
+
+/// Scene enum for canned or config
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Scene {
+    Random,
+    TwoSpheres,
+    TwoPerlinSpheres,
+    SimpleLight,
+    Cornell,
+    CornellSmoke,
+    FinalScene,
+    List(HittableListConfig),
 }
 
 #[derive(Parser, Debug)]
@@ -113,8 +517,21 @@ fn main() {
 
     // Create World
     // let world = random_scene();
-    let world = HittableList::from_config(config.objects);
+    let world = match config.scene {
+        Scene::Random => random_scene(),
+        Scene::TwoSpheres => two_spheres(),
+        Scene::TwoPerlinSpheres => two_perlin_spheres(),
+        Scene::SimpleLight => simple_light(),
+        Scene::Cornell => cornell_box(),
+        Scene::CornellSmoke => cornell_smoke(),
+        Scene::FinalScene => final_scene(),
+        Scene::List(c) => HittableList::from_config(c),
+    };
+    // BvhNode for the win!
+    let world = BvhNode::new(world, 0.0, 1.0);
     let protected_world = Arc::new(RwLock::new(world));
+    // let background_color = Color::new(0.70, 0.8, 1.0);
+    let background_color = Color::new(0.0, 0.0, 0.0);
 
     let cam = Camera::new(
         config.camera.look_from.into(),
@@ -124,6 +541,9 @@ fn main() {
         config.camera.aspect_ratio,
         config.camera.aperture,
         config.camera.focus_distance,
+        // TODO(mkagie) Add this to the config
+        0.0,
+        1.0,
     );
 
     // Random generator
@@ -154,8 +574,12 @@ fn main() {
                 let ray = cam.get_ray(u, v);
                 let protected_world = Arc::clone(&protected_world);
                 pool.execute(move || {
-                    tx.send(ray.get_color(&*protected_world.read().unwrap(), config.max_depth))
-                        .unwrap();
+                    tx.send(ray.get_color(
+                        &background_color,
+                        &*protected_world.read().unwrap(),
+                        config.max_depth,
+                    ))
+                    .unwrap();
                 });
             }
             let pixel_color = worker_rx

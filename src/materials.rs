@@ -2,8 +2,9 @@
 
 use crate::{
     objects::HitRecord,
+    texture::{SolidColor, Texture},
     utils::{self, SerdeVector},
-    Color, Material, Ray,
+    Color, Material, Point, Ray,
 };
 use dyn_clone::DynClone;
 use rand::Rng;
@@ -12,6 +13,10 @@ use serde::{Deserialize, Serialize};
 /// Material
 pub trait Scatterable: DynClone {
     fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult>;
+
+    fn color_emitted(&self, _u: f64, _v: f64, _p: &Point) -> Color {
+        Color::zeros()
+    }
 }
 
 /// Scatter Result
@@ -45,35 +50,45 @@ impl Generator {
 }
 
 /// Lmabertian Scatterer
-#[derive(Debug, Clone)]
 pub struct Lambertian {
-    albedo: Color,
+    albedo: Texture,
 }
 impl Lambertian {
     pub fn new(albedo: Color) -> Self {
-        Self { albedo }
+        Self {
+            albedo: Box::new(SolidColor::new(albedo)),
+        }
+    }
+
+    pub fn from_texture(texture: Texture) -> Self {
+        Self { albedo: texture }
     }
 
     pub fn from_config(config: LambertianConfig) -> Self {
-        Self {
-            albedo: config.albedo.into(),
-        }
+        Self::new(config.albedo.into())
     }
 }
 impl Scatterable for Lambertian {
-    fn try_scatter(&self, _ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
         let mut scatter_direction = hit_record.normal + utils::random_in_unit_sphere();
 
         // Protect against if hit_record.normal and the random_in_unit_sphere as exact opposites
         if scatter_direction.norm() < 1e-8 {
             scatter_direction = hit_record.normal;
         }
-        let scattered = Ray::new(hit_record.p, scatter_direction);
-        let attenuation = self.albedo;
+        let scattered = Ray::new(hit_record.p, scatter_direction, ray_in.time);
+        let attenuation = self.albedo.value(hit_record.u, hit_record.v, &hit_record.p);
         Some(ScatterResult {
             attenuation,
             scattered,
         })
+    }
+}
+impl Clone for Lambertian {
+    fn clone(&self) -> Self {
+        Self {
+            albedo: dyn_clone::clone_box(&*self.albedo),
+        }
     }
 }
 
@@ -107,6 +122,7 @@ impl Scatterable for Metal {
         let scattered = Ray::new(
             hit_record.p,
             reflected + self.fuzz * utils::random_in_unit_sphere(),
+            ray_in.time,
         );
         let attenuation = self.albedo;
         if scattered.dir.dot(&hit_record.normal) > 0.0 {
@@ -173,7 +189,7 @@ impl Scatterable for Dielectric {
             utils::refract(&unit_direction, &hit_record.normal, refraction_ratio)
         };
 
-        let scattered = Ray::new(hit_record.p, direction);
+        let scattered = Ray::new(hit_record.p, direction, ray_in.time);
         Some(ScatterResult {
             attenuation,
             scattered,
@@ -185,4 +201,65 @@ impl Scatterable for Dielectric {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DielectricConfig {
     pub ir: f64,
+}
+
+/// Diffuse light for emitting
+pub struct DiffuseLight {
+    emit: Texture,
+}
+impl Clone for DiffuseLight {
+    fn clone(&self) -> Self {
+        Self::new(dyn_clone::clone_box(&*self.emit))
+    }
+}
+impl DiffuseLight {
+    pub fn new(emit: Texture) -> Self {
+        Self { emit }
+    }
+
+    pub fn from_color(color: Color) -> Self {
+        Self {
+            emit: Box::new(SolidColor::new(color)),
+        }
+    }
+}
+impl Scatterable for DiffuseLight {
+    fn try_scatter(&self, _ray_in: &Ray, _hit_record: &HitRecord) -> Option<ScatterResult> {
+        None
+    }
+
+    fn color_emitted(&self, u: f64, v: f64, p: &Point) -> Color {
+        self.emit.value(u, v, p)
+    }
+}
+
+/// Isotropic
+pub struct Isotropic {
+    albedo: Texture,
+}
+impl Clone for Isotropic {
+    fn clone(&self) -> Self {
+        Self::new(dyn_clone::clone_box(&*self.albedo))
+    }
+}
+impl Isotropic {
+    pub fn new(a: Texture) -> Self {
+        Self { albedo: a }
+    }
+
+    pub fn from_color(c: Color) -> Self {
+        Self {
+            albedo: Box::new(SolidColor::new(c)),
+        }
+    }
+}
+impl Scatterable for Isotropic {
+    fn try_scatter(&self, ray_in: &Ray, hit_record: &HitRecord) -> Option<ScatterResult> {
+        let scattered = Ray::new(hit_record.p, utils::random_in_unit_sphere(), ray_in.time);
+        let attenuation = self.albedo.value(hit_record.u, hit_record.v, &hit_record.p);
+        Some(ScatterResult {
+            attenuation,
+            scattered,
+        })
+    }
 }

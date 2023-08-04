@@ -1,0 +1,22 @@
+image_width: 600
+samples_per_pixel: 200
+max_depth: 50
+camera:
+  look_from:
+    x: 278.0
+    y: 278.0
+    z: -800.0
+  look_at:
+    x: 278.0
+    y: 278.0
+    z: 0.0
+  v_up:
+    x: 0.0
+    y: 1.0
+    z: 0.0
+  vertical_fov_deg: 40.0
+  aspect_ratio: 1.0
+  aperture: 0.1
+  focus_distance: 10.0
+scene:
+  type: CornellSmoke

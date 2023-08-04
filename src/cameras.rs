@@ -29,9 +29,12 @@ pub struct Camera {
     v: Vec3,
     _w: Vec3,
     lens_radius: f64,
+    shutter_open: f64,
+    shutter_close: f64,
 }
 impl Camera {
     // TODO(mkagie) use uom for angle
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         look_from: Point,
         look_at: Point,
@@ -40,6 +43,8 @@ impl Camera {
         aspect_ratio: f64,
         aperture: f64,
         focus_dist: f64,
+        shutter_open: f64,
+        shutter_close: f64,
     ) -> Self {
         // Establish the viewport
         let theta = vertical_fov_deg.to_radians();
@@ -68,6 +73,8 @@ impl Camera {
             v,
             _w: w,
             lens_radius,
+            shutter_open,
+            shutter_close,
         }
     }
 
@@ -75,9 +82,17 @@ impl Camera {
         let rd = self.lens_radius * Self::random_in_unit_disk();
         let offset = self.u * rd[0] + self.v * rd[1];
 
+        let time = if self.shutter_open != 0.0 || self.shutter_close != 0.0 {
+            let mut rng = rand::thread_rng();
+            rng.gen_range(self.shutter_open..self.shutter_close)
+        } else {
+            0.0
+        };
+
         Ray::new(
             self.origin + offset,
             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
+            time,
         )
     }
 
