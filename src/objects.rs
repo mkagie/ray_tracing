@@ -9,33 +9,42 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Hittable object
 pub type HittableObj = Box<dyn Hittable + Send + Sync>;
 
+/// Trait defining if something can be hit by a ray
 pub trait Hittable {
+    /// Try to hit with a ray
     fn try_hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 
+    /// Try to compute an axis-aligned bounding box
     fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<Aabb>;
 }
 
 #[derive(Default)]
 pub struct HittableList(pub Vec<HittableObj>);
 impl HittableList {
+    /// Add to the list
     pub fn add(&mut self, boxed_obj: HittableObj) {
         self.0.push(boxed_obj)
     }
 
+    /// Clear the list
     pub fn clear(&mut self) {
         self.0.clear()
     }
 
+    /// Get the length
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Check if is empty
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
+    /// Sort the list by some function
     pub fn sort_by<F>(&mut self, f: F)
     where
         F: FnMut(&HittableObj, &HittableObj) -> Ordering,
@@ -43,6 +52,7 @@ impl HittableList {
         self.0.sort_by(f);
     }
 
+    /// Generate from a config
     pub fn from_config(config: HittableListConfig) -> Self {
         let mut s = Self::default();
         for obj_cfg in config.objects {
@@ -114,6 +124,7 @@ pub struct HitRecord {
     pub v: f64,
 }
 impl HitRecord {
+    // TODO(mkagie) refactor with a builder pattern as opposed to this challenging constructor
     pub fn new(
         p: Point,
         t: f64,
@@ -140,6 +151,7 @@ impl HitRecord {
     }
 }
 
+/// 3D Sphere
 pub struct Sphere {
     pub center: Point,
     pub radius: f64,
@@ -154,6 +166,7 @@ impl Sphere {
         }
     }
 
+    /// Generate from a config
     pub fn from_config(config: SphereConfig) -> Self {
         Self::new(
             config.center.into(),
@@ -162,6 +175,7 @@ impl Sphere {
         )
     }
 
+    /// Convert a point into u, v space
     pub fn get_uv(p: &Point) -> (f64, f64) {
         // p: a given point on the sphere of radius one, centered at the origin.
         // u: returned value [0,1] of angle around the Y axis from X=-1.
@@ -267,6 +281,7 @@ impl MovingSphere {
         }
     }
 
+    /// Compute the center
     pub fn center(&self, time: f64) -> Point {
         self.initial_center
             + ((time - self.initial_time) / (self.final_time - self.initial_time))
@@ -327,14 +342,21 @@ pub enum RectangleType {
     Yz,
 }
 
-/// XY Rectangle
+/// Axis-aligned Rectangle
 pub struct Rectangle {
+    /// Material to make out of
     material: Material,
+    /// Lower x value
     x0: f64,
+    /// Upper x value
     x1: f64,
+    /// Lower y value
     y0: f64,
+    /// Upper y value
     y1: f64,
+    /// k value
     k: f64,
+    /// Rectangle type
     rtype: RectangleType,
 }
 impl Rectangle {
@@ -409,8 +431,11 @@ impl Hittable for Rectangle {
 
 /// Axis-aligned box made of 6 rectangles
 pub struct BoxObj {
+    /// Minimum point of the box
     box_min: Point,
+    /// Maximum point of the box
     box_max: Point,
+    /// Sides of the box
     sides: HittableList,
 }
 impl BoxObj {
