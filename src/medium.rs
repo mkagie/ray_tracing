@@ -74,10 +74,10 @@ impl Hittable for ConstantMedium {
                     0.0,
                 ))
             } else {
-                return None;
+                None
             }
         } else {
-            return None;
+            None
         }
     }
 

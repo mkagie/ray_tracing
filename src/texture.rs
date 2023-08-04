@@ -125,7 +125,7 @@ impl Perlin {
         for _ in 0..depth {
             accum += weight * self.noise(&temp_p);
             weight *= 0.5;
-            temp_p = temp_p * 2.0;
+            temp_p *= 2.0;
         }
         accum.abs()
     }
@@ -141,10 +141,10 @@ impl Perlin {
 
         // Initialize as zeros
         let mut c: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zeros(); 2]; 2]; 2];
-        for di in 0..2 {
-            for dj in 0..2 {
-                for dk in 0..2 {
-                    c[di][dj][dk] = self.ranvec[(self.perm_x[((i + di as i32) & 255) as usize]
+        for (di, c0) in c.iter_mut().enumerate() {
+            for (dj, c1) in c0.iter_mut().enumerate() {
+                for (dk, c2) in c1.iter_mut().enumerate() {
+                    *c2 = self.ranvec[(self.perm_x[((i + di as i32) & 255) as usize]
                         ^ self.perm_y[((j + dj as i32) & 255) as usize]
                         ^ self.perm_z[((k + dk as i32) & 255) as usize])
                         as usize]
@@ -172,9 +172,7 @@ impl Perlin {
         let mut rng = rand::thread_rng();
         for i in (1..n).rev() {
             let target = rng.gen_range(0..=i);
-            let tmp = p[i];
-            p[i] = p[target];
-            p[target] = tmp;
+            p.swap(i, target);
         }
     }
 

@@ -93,7 +93,7 @@ fn two_spheres() -> HittableList {
     world.add(Box::new(Sphere::new(
         Point::new(0.0, 10.0, 0.0),
         10.0,
-        Box::new(Lambertian::from_texture(checker.clone())),
+        Box::new(Lambertian::from_texture(checker)),
     )));
 
     world
@@ -311,7 +311,7 @@ fn cornell_smoke() -> HittableList {
     let box2 = Box::new(BoxObj::new(
         Point::new(0.0, 0.0, 0.0),
         Point::new(165.0, 165.0, 165.0),
-        white.clone(),
+        white,
     ));
     let box2 = Box::new(RotateY::new(box2, -18.0));
     let box2 = Box::new(Translate::new(box2, Vec3::new(130.0, 0.0, 65.0)));

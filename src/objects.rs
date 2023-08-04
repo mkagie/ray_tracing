@@ -32,6 +32,10 @@ impl HittableList {
         self.0.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn sort_by<F>(&mut self, f: F)
     where
         F: FnMut(&HittableObj, &HittableObj) -> Ordering,

@@ -34,6 +34,7 @@ pub struct Camera {
 }
 impl Camera {
     // TODO(mkagie) use uom for angle
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         look_from: Point,
         look_at: Point,
