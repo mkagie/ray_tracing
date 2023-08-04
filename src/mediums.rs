@@ -6,7 +6,7 @@ use crate::{
     materials::Isotropic,
     objects::{HitRecord, Hittable},
     prelude::HittableObj,
-    texture::{SolidColor, Texture},
+    textures::{SolidColor, Texture},
     Color, Material, Vec3,
 };
 
@@ -81,7 +81,7 @@ impl Hittable for ConstantMedium {
         }
     }
 
-    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<crate::aabb::Aabb> {
+    fn try_bounding_box(&self, time0: f64, time1: f64) -> Option<crate::bvh::Aabb> {
         self.boundary.try_bounding_box(time0, time1)
     }
 }

@@ -18,7 +18,7 @@ pub struct CameraConfig {
 }
 
 // TODO(mkagie) Convert the camera from look at and look from to look_from and quaternion
-/// Camera and related tasks
+/// Camera Model
 #[derive(Debug)]
 pub struct Camera {
     origin: Point,
@@ -78,7 +78,8 @@ impl Camera {
         }
     }
 
-    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+    /// Get a ray given starting location of (s, t)
+    pub fn ray(&self, s: f64, t: f64) -> Ray {
         let rd = self.lens_radius * Self::random_in_unit_disk();
         let offset = self.u * rd[0] + self.v * rd[1];
 
@@ -97,6 +98,7 @@ impl Camera {
     }
 
     /// Generate a random vector inside a unit disk
+    ///
     /// This simulates defocus blur
     fn random_in_unit_disk() -> Vec3 {
         let mut rng = rand::thread_rng();

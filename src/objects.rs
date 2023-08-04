@@ -2,7 +2,7 @@
 use std::cmp::Ordering;
 
 use crate::{
-    aabb::Aabb,
+    bvh::Aabb,
     materials::{self, MaterialConfig},
     utils::SerdeVector,
     Material, Point, Ray, Vec3,

@@ -1,7 +1,7 @@
 //! Translation and rotation
 
 use crate::{
-    aabb::Aabb,
+    bvh::Aabb,
     objects::{HitRecord, Hittable, HittableObj},
     Point, Ray, Vec3,
 };
